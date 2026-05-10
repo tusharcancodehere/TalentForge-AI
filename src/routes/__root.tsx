@@ -74,14 +74,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "LOveable app" },
+      { name: "description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "LOveable app" },
+      { property: "og:description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "LOveable app" },
+      { name: "twitter:description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d893ec4-2008-44c1-9a67-ef217869f4f9/id-preview-8a3d9991--86a4c781-8588-4e0f-afaf-ae1e5d05b175.lovable.app-1778410826230.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d893ec4-2008-44c1-9a67-ef217869f4f9/id-preview-8a3d9991--86a4c781-8588-4e0f-afaf-ae1e5d05b175.lovable.app-1778410826230.png" },
     ],
     links: [
       {
