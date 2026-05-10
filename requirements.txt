@@ -2,5 +2,5 @@ fastapi
 uvicorn
 httpx
 python-dotenv
-google-generativeai
 fpdf2
+google-genai
