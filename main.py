@@ -918,28 +918,19 @@ async def get_stats() -> dict[str, int]:
 # ---------------------------------------------------------------------------
 # *** DO NOT MODIFY — Static file serving for all-in-one Render deployment ***
 # ---------------------------------------------------------------------------
-# Serve static assets (CSS, JS, etc.)
-if os.path.exists("dist/assets"):
-    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
-
-
-# The catch-all: sends the user to the React UI
-@app.get("/{catchall:path}")
-async def serve_frontend(catchall: str):
-    if catchall.startswith("api"):
-        return JSONResponse(status_code=404, content={"error": "API route not found"})
-    if os.path.exists("dist/index.html"):
-        return FileResponse("dist/index.html")
-    return JSONResponse(
-        status_code=503,
-        content={"error": "Frontend build not found. Ensure 'npm run build' completed."},
-    )
-
-
-# Serve the React build (all-in-one container)
+# Mount the entire dist/ directory with html=True so Vite's index.html is
+# served for any path not matched by an /api route above.
+# This MUST be last — FastAPI evaluates mounts in registration order.
 _dist_path = os.path.join(os.path.dirname(__file__), "dist")
 if os.path.isdir(_dist_path):
-    app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "dist"), html=True), name="static")
+    app.mount("/", StaticFiles(directory=_dist_path, html=True), name="static")
+else:
+    @app.get("/{catchall:path}")
+    async def _no_frontend(catchall: str):
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Frontend build not found. Run npm run build first."},
+        )
 # ---------------------------------------------------------------------------
 # *** END — Static file serving block ***
 # ---------------------------------------------------------------------------
