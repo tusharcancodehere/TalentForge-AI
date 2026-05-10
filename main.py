@@ -919,7 +919,7 @@ async def get_stats() -> dict[str, int]:
 # *** DO NOT MODIFY — Static file serving for all-in-one Render deployment ***
 # ---------------------------------------------------------------------------
 # Serve static assets (CSS, JS, etc.)
-if os.path.exists("dist"):
+if os.path.exists("dist/assets"):
     app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
 
 
@@ -939,7 +939,7 @@ async def serve_frontend(catchall: str):
 # Serve the React build (all-in-one container)
 _dist_path = os.path.join(os.path.dirname(__file__), "dist")
 if os.path.isdir(_dist_path):
-    app.mount("/", StaticFiles(directory=_dist_path, html=True), name="static")
+    app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "dist"), html=True), name="static")
 # ---------------------------------------------------------------------------
 # *** END — Static file serving block ***
 # ---------------------------------------------------------------------------
