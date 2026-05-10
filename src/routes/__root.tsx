@@ -4,11 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 
-import appCss from "../styles.css?url";
 import { ThemeProvider } from "../components/theme-provider";
 import { Toaster } from "../components/ui/sonner";
 
@@ -70,72 +67,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TalentForge AI | Zero-Effort GitHub Portfolio & CV Generator" },
-      {
-        name: "description",
-        content:
-          "Instantly transform your GitHub profile into a premium, AI-powered portfolio and ATS-friendly PDF resume. Get market readiness scores and salary estimates.",
-      },
-      {
-        name: "keywords",
-        content:
-          "GitHub Portfolio Generator, AI Resume Builder, Developer CV Tool, TalentForge AI, Glassport Gen, best AI tools for software developers, how to make a GitHub portfolio for students",
-      },
-      { name: "author", content: "TalentForge AI" },
-      { name: "robots", content: "index, follow, max-image-preview:large" },
-      { property: "og:title", content: "Build an Elite Portfolio in 60 Seconds" },
-      {
-        property: "og:description",
-        content:
-          "See your market readiness score and get an AI-written CV. Powered by Gemini 1.5 Pro.",
-      },
-      { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://talentforge.ai/" },
-      { property: "og:site_name", content: "TalentForge AI" },
-      { property: "og:image", content: "https://talentforge.ai/og-talentforge.svg" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "TalentForge AI — AI Portfolio + Resume Intelligence" },
-      {
-        name: "twitter:description",
-        content:
-          "Generate a stunning developer portfolio and high-impact resume from your GitHub projects instantly.",
-      },
-      { name: "twitter:image", content: "https://talentforge.ai/og-talentforge.svg" },
-      { name: "theme-color", content: "#12121B" },
-    ],
-    links: [
-      { rel: "icon", type: "image/svg+xml", href: "/brandmark.svg" },
-      { rel: "apple-touch-icon", href: "/brandmark.svg" },
-      { rel: "manifest", href: "/site.webmanifest" },
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();

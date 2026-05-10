@@ -3,4 +3,4 @@ uvicorn
 httpx
 python-dotenv
 fpdf2
-google-genai
+google-genai 
