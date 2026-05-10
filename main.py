@@ -15,7 +15,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import Any
 
-import google.generativeai as genai
+import google.genai as genai
 from google.genai import types as genai_types
 import httpx
 from dotenv import load_dotenv
