@@ -1,66 +1,30 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, Github, MapPin, Link2 } from "lucide-react";
 import { ProjectCard, type Project } from "./ProjectCard";
+import type { GitHubProfile, GitHubRepo } from "@/lib/github";
 
-const MOCK_TECH = [
-  "TypeScript",
-  "React",
-  "Node.js",
-  "Python",
-  "Rust",
-  "Go",
-  "PostgreSQL",
-  "Docker",
-  "GraphQL",
-  "TailwindCSS",
-];
+export function Dashboard({
+  profile,
+  repos,
+  onBack,
+}: {
+  profile: GitHubProfile;
+  repos: GitHubRepo[];
+  onBack: () => void;
+}) {
+  const projects: Project[] = repos.map((r) => ({
+    title: r.name,
+    description: r.description ?? "No description provided.",
+    tags: r.language ? [r.language] : [],
+    stars: r.stargazers_count,
+    forks: r.forks_count,
+    url: r.html_url,
+  }));
 
-const MOCK_PROJECTS: Project[] = [
-  {
-    title: "neon-cli",
-    description: "Blazing-fast terminal toolkit for managing cloud deploys with a single command.",
-    tags: ["Rust", "TUI"],
-    stars: 1240,
-    forks: 88,
-  },
-  {
-    title: "prism-ui",
-    description: "Glassmorphic React component library with built-in theming and animations.",
-    tags: ["React", "TypeScript"],
-    stars: 3420,
-    forks: 210,
-  },
-  {
-    title: "loom-server",
-    description: "Self-hosted realtime collaboration server with CRDT-based sync.",
-    tags: ["Go", "WebSocket"],
-    stars: 890,
-    forks: 54,
-  },
-  {
-    title: "ember-ml",
-    description: "Lightweight inference engine for running LLMs on edge devices.",
-    tags: ["Python", "CUDA"],
-    stars: 2105,
-    forks: 142,
-  },
-  {
-    title: "atlas-graph",
-    description: "Interactive dependency visualizer for monorepos and microservices.",
-    tags: ["TypeScript", "D3"],
-    stars: 678,
-    forks: 32,
-  },
-  {
-    title: "halo-auth",
-    description: "Drop-in authentication with passkeys, OAuth, and magic links.",
-    tags: ["Node.js", "PostgreSQL"],
-    stars: 1560,
-    forks: 96,
-  },
-];
+  const techSet = Array.from(
+    new Set(repos.map((r) => r.language).filter((l): l is string => Boolean(l))),
+  );
 
-export function Dashboard({ username, onBack }: { username: string; onBack: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -78,37 +42,50 @@ export function Dashboard({ username, onBack }: { username: string; onBack: () =
 
       {/* Profile */}
       <div className="glass rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-        <div
-          className="h-24 w-24 rounded-full shrink-0 flex items-center justify-center text-3xl font-bold"
+        <img
+          src={profile.avatar_url}
+          alt={`${profile.login} avatar`}
+          className="h-24 w-24 rounded-full shrink-0 object-cover"
           style={{
-            background:
-              "linear-gradient(135deg, var(--accent-glow), var(--accent-glow-2))",
-            color: "oklch(0.13 0.025 270)",
+            boxShadow:
+              "0 0 0 2px color-mix(in oklab, var(--accent-glow) 50%, transparent)",
           }}
-        >
-          {username.charAt(0).toUpperCase()}
-        </div>
+        />
         <div className="flex-1 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {username}
+              {profile.name ?? profile.login}
             </h2>
-            <span className="font-mono text-xs opacity-50">@{username}</span>
+            <span className="font-mono text-xs opacity-50">@{profile.login}</span>
           </div>
-          <p className="mt-2 opacity-70 max-w-xl text-sm sm:text-base">
-            Full-stack engineer crafting tools that make developers faster.
-            Believer in clean APIs and dark mode.
-          </p>
+          {profile.bio && (
+            <p className="mt-2 opacity-70 max-w-xl text-sm sm:text-base">
+              {profile.bio}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-mono opacity-60">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" /> San Francisco
-            </span>
-            <a className="inline-flex items-center gap-1.5 hover:opacity-100" href="#">
-              <Link2 className="h-3.5 w-3.5" /> {username}.dev
-            </a>
+            {profile.location && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> {profile.location}
+              </span>
+            )}
+            {profile.blog && (
+              <a
+                className="inline-flex items-center gap-1.5 hover:opacity-100"
+                href={
+                  profile.blog.startsWith("http")
+                    ? profile.blog
+                    : `https://${profile.blog}`
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Link2 className="h-3.5 w-3.5" /> {profile.blog.replace(/^https?:\/\//, "")}
+              </a>
+            )}
             <a
               className="inline-flex items-center gap-1.5 hover:opacity-100"
-              href={`https://github.com/${username}`}
+              href={profile.html_url}
               target="_blank"
               rel="noreferrer"
             >
@@ -119,42 +96,48 @@ export function Dashboard({ username, onBack }: { username: string; onBack: () =
       </div>
 
       {/* Tech */}
-      <section className="mt-8">
-        <h3 className="font-mono text-xs uppercase tracking-widest opacity-60 mb-4 px-1">
-          // tech.stack
-        </h3>
-        <div className="glass rounded-2xl p-5 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-          {MOCK_TECH.map((t, i) => (
-            <motion.span
-              key={t}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.03 * i }}
-              className="font-mono text-xs sm:text-sm px-3 py-1.5 rounded-lg glass"
-              style={{
-                color: "var(--accent-glow)",
-              }}
-            >
-              {t}
-            </motion.span>
-          ))}
-        </div>
-      </section>
+      {techSet.length > 0 && (
+        <section className="mt-8">
+          <h3 className="font-mono text-xs uppercase tracking-widest opacity-60 mb-4 px-1">
+            // tech.stack
+          </h3>
+          <div className="glass rounded-2xl p-5 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+            {techSet.map((t, i) => (
+              <motion.span
+                key={t}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.03 * i }}
+                className="font-mono text-xs sm:text-sm px-3 py-1.5 rounded-lg glass"
+                style={{ color: "var(--accent-glow)" }}
+              >
+                {t}
+              </motion.span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Projects */}
       <section className="mt-10">
         <h3 className="font-mono text-xs uppercase tracking-widest opacity-60 mb-4 px-1">
           // featured.projects
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {MOCK_PROJECTS.map((p, i) => (
-            <ProjectCard key={p.title} project={p} index={i} />
-          ))}
-        </div>
+        {projects.length === 0 ? (
+          <div className="glass rounded-2xl p-8 text-center font-mono text-sm opacity-60">
+            // no public repositories found
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {projects.map((p, i) => (
+              <ProjectCard key={p.title} project={p} index={i} />
+            ))}
+          </div>
+        )}
       </section>
 
       <p className="text-center text-xs font-mono opacity-40 mt-12">
-        generated with ♥ — connect a backend to wire real GitHub data
+        generated with ♥ — live data from github.com
       </p>
     </motion.div>
   );
