@@ -5,6 +5,11 @@ import { Hero } from "@/components/portfolio/Hero";
 import { Dashboard } from "@/components/portfolio/Dashboard";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Code2 } from "lucide-react";
+import {
+  fetchGitHubUser,
+  type GitHubProfile,
+  type GitHubRepo,
+} from "@/lib/github";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -21,7 +26,25 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const [username, setUsername] = useState<string | null>(null);
+  const [data, setData] = useState<
+    { profile: GitHubProfile; repos: GitHubRepo[] } | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleGenerate = async (username: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchGitHubUser(username);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="ambient-bg relative min-h-screen overflow-x-hidden">
@@ -43,14 +66,23 @@ function Index() {
 
       <main className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
         <AnimatePresence mode="wait">
-          {username ? (
+          {data ? (
             <Dashboard
               key="dashboard"
-              username={username}
-              onBack={() => setUsername(null)}
+              profile={data.profile}
+              repos={data.repos}
+              onBack={() => {
+                setData(null);
+                setError(null);
+              }}
             />
           ) : (
-            <Hero key="hero" onGenerate={setUsername} />
+            <Hero
+              key="hero"
+              onGenerate={handleGenerate}
+              loading={loading}
+              error={error}
+            />
           )}
         </AnimatePresence>
       </main>
