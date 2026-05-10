@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Github, MapPin, Link2 } from "lucide-react";
+import { ArrowLeft, Github, MapPin, Link2, Download, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { ProjectCard, type Project } from "./ProjectCard";
 import type { GitHubProfile, GitHubRepo } from "@/lib/github";
 
@@ -12,6 +13,31 @@ export function Dashboard({
   repos: GitHubRepo[];
   onBack: () => void;
 }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const res = await fetch(`http://localhost:8000/api/cv/${profile.login}`);
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "resume.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const projects: Project[] = repos.map((r) => ({
     title: r.name,
     description: r.description ?? "No description provided.",
