@@ -915,22 +915,31 @@ async def get_stats() -> dict[str, int]:
     return tracker.get_stats()
 
 
-# ---------------------------------------------------------------------------
-# *** DO NOT MODIFY — Static file serving for all-in-one Render deployment ***
-# ---------------------------------------------------------------------------
-# Mount the entire dist/ directory with html=True so Vite's index.html is
-# served for any path not matched by an /api route above.
-# This MUST be last — FastAPI evaluates mounts in registration order.
-_dist_path = os.path.join(os.path.dirname(__file__), "dist")
-if os.path.isdir(_dist_path):
-    app.mount("/", StaticFiles(directory=_dist_path, html=True), name="static")
+# ─── Consolidated Frontend Serving ───────────
+# We need to point to dist/client because that's where Vite/TanStack puts the UI
+_base_path = os.path.dirname(os.path.abspath(__file__))
+_frontend_dist = os.path.join(_base_path, "dist", "client")
+
+if os.path.isdir(_frontend_dist):
+    # 1. Mount the assets folder (where your CSS/JS files live)
+    _assets_path = os.path.join(_frontend_dist, "assets")
+    if os.path.isdir(_assets_path):
+        app.mount("/assets", StaticFiles(directory=_assets_path), name="assets")
+
+    # 2. Catch-all for the index.html (the "Face" of your app)
+    @app.get("/{catchall:path}")
+    async def serve_frontend(catchall: str):
+        if catchall.startswith("api"):
+            return JSONResponse(status_code=404, content={"detail": "API route not found"})
+        
+        _index_file = os.path.join(_frontend_dist, "index.html")
+        if os.path.isfile(_index_file):
+            return FileResponse(_index_file)
+        return JSONResponse(status_code=404, content={"error": "Frontend index.html not found"})
 else:
     @app.get("/{catchall:path}")
     async def _no_frontend(catchall: str):
         return JSONResponse(
             status_code=503,
-            content={"error": "Frontend build not found. Run npm run build first."},
+            content={"error": "Frontend build not found. Ensure 'npm run build' outputs to dist/client."},
         )
-# ---------------------------------------------------------------------------
-# *** END — Static file serving block ***
-# ---------------------------------------------------------------------------
