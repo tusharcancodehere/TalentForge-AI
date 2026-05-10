@@ -1,6 +1,7 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Github, MapPin, Link2, Download, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { ProjectCard, type Project } from "./ProjectCard";
 import type { GitHubProfile, GitHubRepo } from "@/lib/github";
 
@@ -15,10 +16,27 @@ export function Dashboard({
 }) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+    };
+  }, []);
 
   const handleDownload = async () => {
     setDownloading(true);
     setDownloadError(null);
+    setProgress(4);
+    // simulated progress stream — eases toward 90% while we wait
+    if (progressTimer.current) clearInterval(progressTimer.current);
+    progressTimer.current = setInterval(() => {
+      setProgress((p) => (p < 90 ? p + Math.max(1, (92 - p) * 0.08) : p));
+    }, 180);
+    const toastId = toast.loading("Generating your CV…", {
+      description: `compiling resume for @${profile.login}`,
+    });
     try {
       const res = await fetch(`http://localhost:8000/api/cv/${profile.login}`);
       if (!res.ok) throw new Error(`Failed (${res.status})`);
@@ -31,10 +49,22 @@ export function Dashboard({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setProgress(100);
+      toast.success("CV ready", {
+        id: toastId,
+        description: "resume.pdf downloaded successfully",
+      });
     } catch (e) {
-      setDownloadError(e instanceof Error ? e.message : "Download failed");
+      const msg = e instanceof Error ? e.message : "Download failed";
+      setDownloadError(msg);
+      toast.error("Export failed", { id: toastId, description: msg });
     } finally {
+      if (progressTimer.current) {
+        clearInterval(progressTimer.current);
+        progressTimer.current = null;
+      }
       setDownloading(false);
+      setTimeout(() => setProgress(0), 600);
     }
   };
 
