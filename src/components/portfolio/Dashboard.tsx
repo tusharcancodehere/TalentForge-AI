@@ -118,6 +118,31 @@ export function Dashboard({
               <Github className="h-3.5 w-3.5" /> github
             </a>
           </div>
+          <div className="mt-5 flex flex-col sm:flex-row items-center sm:items-start gap-2">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="glass rounded-xl px-4 py-2.5 inline-flex items-center gap-2 font-mono text-xs sm:text-sm hover:opacity-100 opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: "var(--accent-glow)" }}
+            >
+              {downloading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download PDF Resume
+                </>
+              )}
+            </button>
+            {downloadError && (
+              <span className="font-mono text-xs text-red-400/80">
+                &gt; error: {downloadError}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
