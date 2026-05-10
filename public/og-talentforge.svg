@@ -1,0 +1,23 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#081625"/>
+      <stop offset="1" stop-color="#191434"/>
+    </linearGradient>
+    <linearGradient id="fg" x1="190" y1="120" x2="1020" y2="510" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4DE8FF"/>
+      <stop offset="1" stop-color="#7E6BFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="180" cy="110" r="220" fill="#4DE8FF" opacity="0.18"/>
+  <circle cx="1060" cy="510" r="250" fill="#7E6BFF" opacity="0.18"/>
+  <rect x="140" y="110" width="920" height="410" rx="42" fill="#131A2C" fill-opacity="0.72" stroke="url(#fg)" stroke-opacity="0.5"/>
+  <rect x="190" y="160" width="76" height="76" rx="20" fill="url(#fg)"/>
+  <path d="M210 212L230 192L244 206L276 174" stroke="#0E1321" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M258 174H276V192" stroke="#0E1321" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="294" y="212" fill="#F5F8FF" font-size="54" font-family="Inter, Arial, sans-serif" font-weight="700">TalentForge AI</text>
+  <text x="190" y="300" fill="#F5F8FF" font-size="46" font-family="Inter, Arial, sans-serif" font-weight="700">Portfolio &amp; Resume Intelligence</text>
+  <text x="190" y="352" fill="#B3C0D9" font-size="26" font-family="Inter, Arial, sans-serif">Convert GitHub projects into market-ready career assets.</text>
+  <text x="190" y="392" fill="#B3C0D9" font-size="26" font-family="Inter, Arial, sans-serif">ATS-ready PDF, skill ratings, and hiring insights.</text>
+</svg>

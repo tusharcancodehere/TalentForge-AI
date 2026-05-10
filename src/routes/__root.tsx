@@ -74,20 +74,43 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LOveable app" },
-      { name: "description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "LOveable app" },
-      { property: "og:description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
+      { title: "TalentForge AI | Zero-Effort GitHub Portfolio & CV Generator" },
+      {
+        name: "description",
+        content:
+          "Instantly transform your GitHub profile into a premium, AI-powered portfolio and ATS-friendly PDF resume. Get market readiness scores and salary estimates.",
+      },
+      {
+        name: "keywords",
+        content:
+          "GitHub Portfolio Generator, AI Resume Builder, Developer CV Tool, TalentForge AI, Glassport Gen, best AI tools for software developers, how to make a GitHub portfolio for students",
+      },
+      { name: "author", content: "TalentForge AI" },
+      { name: "robots", content: "index, follow, max-image-preview:large" },
+      { property: "og:title", content: "Build an Elite Portfolio in 60 Seconds" },
+      {
+        property: "og:description",
+        content:
+          "See your market readiness score and get an AI-written CV. Powered by Gemini 1.5 Pro.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "LOveable app" },
-      { name: "twitter:description", content: "Portfolio Prism generates developer portfolios from GitHub profiles with a modern, glassmorphic UI." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d893ec4-2008-44c1-9a67-ef217869f4f9/id-preview-8a3d9991--86a4c781-8588-4e0f-afaf-ae1e5d05b175.lovable.app-1778410826230.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6d893ec4-2008-44c1-9a67-ef217869f4f9/id-preview-8a3d9991--86a4c781-8588-4e0f-afaf-ae1e5d05b175.lovable.app-1778410826230.png" },
+      { property: "og:url", content: "https://talentforge.ai/" },
+      { property: "og:site_name", content: "TalentForge AI" },
+      { property: "og:image", content: "https://talentforge.ai/og-talentforge.svg" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "TalentForge AI — AI Portfolio + Resume Intelligence" },
+      {
+        name: "twitter:description",
+        content:
+          "Generate a stunning developer portfolio and high-impact resume from your GitHub projects instantly.",
+      },
+      { name: "twitter:image", content: "https://talentforge.ai/og-talentforge.svg" },
+      { name: "theme-color", content: "#12121B" },
     ],
     links: [
+      { rel: "icon", type: "image/svg+xml", href: "/brandmark.svg" },
+      { rel: "apple-touch-icon", href: "/brandmark.svg" },
+      { rel: "manifest", href: "/site.webmanifest" },
       {
         rel: "stylesheet",
         href: appCss,

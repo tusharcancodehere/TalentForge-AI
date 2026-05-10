@@ -30,8 +30,12 @@ export function ProjectCard({ project, index }: { project: Project; index: numbe
         />
       </div>
 
-      <p className="mt-2 text-sm opacity-70 line-clamp-2 flex-1">
+      <p className="mt-2 text-sm opacity-70 line-clamp-4 flex-1">
         {project.description}
+      </p>
+
+      <p className="mt-3 text-xs font-medium opacity-75">
+        Recruiter-ready impact summary
       </p>
 
       <div className="mt-4 flex items-center gap-4 text-xs font-mono opacity-60">

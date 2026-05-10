@@ -1,34 +1,46 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Hero } from "@/components/portfolio/Hero";
+import { LandingPage } from "@/components/portfolio/LandingPage";
 import { Dashboard } from "@/components/portfolio/Dashboard";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Code2 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import {
-  fetchGitHubUser,
-  type GitHubProfile,
-  type GitHubRepo,
+  fetchPortfolioData,
+  type PortfolioResponse,
 } from "@/lib/github";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/")(
+  {
   component: Index,
   head: () => ({
     meta: [
-      { title: "Portfoli.io — Deploy your dev portfolio in 60 seconds" },
+      { title: "TalentForge AI | Zero-Effort GitHub Portfolio & CV Generator" },
       {
         name: "description",
         content:
-          "Zero-effort developer portfolio generator. Drop your GitHub username and get a beautiful glassmorphic portfolio instantly.",
+          "Instantly transform your GitHub profile into a premium, AI-powered portfolio and ATS-friendly PDF resume. Get market readiness scores and salary estimates.",
+      },
+      {
+        name: "keywords",
+        content:
+          "GitHub Portfolio Generator, AI Resume Builder, Developer CV Tool, TalentForge AI, Glassport Gen, best AI tools for software developers, how to make a GitHub portfolio for students",
+      },
+      {
+        property: "og:title",
+        content: "Build an Elite Portfolio in 60 Seconds",
+      },
+      {
+        property: "og:description",
+        content:
+          "See your market readiness score and get an AI-written CV. Powered by Gemini 1.5 Pro.",
       },
     ],
   }),
 });
 
 function Index() {
-  const [data, setData] = useState<
-    { profile: GitHubProfile; repos: GitHubRepo[] } | null
-  >(null);
+  const [data, setData] = useState<PortfolioResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +48,7 @@ function Index() {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchGitHubUser(username);
+      const result = await fetchPortfolioData(username, 1, 6);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -48,37 +60,31 @@ function Index() {
 
   return (
     <div className="ambient-bg relative min-h-screen overflow-x-hidden">
-      <header className="flex items-center justify-between px-6 sm:px-10 py-6 max-w-6xl mx-auto">
-        <div className="inline-flex items-center gap-2 font-mono text-sm font-semibold">
-          <span
-            className="h-7 w-7 rounded-lg flex items-center justify-center"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--accent-glow), var(--accent-glow-2))",
-            }}
-          >
-            <Code2 className="h-4 w-4" style={{ color: "oklch(0.13 0.025 270)" }} />
-          </span>
-          portfoli<span style={{ color: "var(--accent-glow)" }}>.io</span>
-        </div>
+      <nav className="flex items-center justify-between px-6 sm:px-10 py-6 max-w-6xl mx-auto">
+        <BrandLogo />
         <ThemeToggle />
-      </header>
+      </nav>
 
-      <main className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
+      <main>
         <AnimatePresence mode="wait">
           {data ? (
-            <Dashboard
-              key="dashboard"
-              profile={data.profile}
-              repos={data.repos}
-              onBack={() => {
-                setData(null);
-                setError(null);
-              }}
-            />
+            <div key="dashboard" className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
+              <Dashboard
+                username={usernameFromGithubUrl(data.user.github_url)}
+                user={data.user}
+                projects={data.projects}
+                techStack={data.tech_stack}
+                marketInsights={data.market_insights}
+                initialPagination={data.pagination}
+                onBack={() => {
+                  setData(null);
+                  setError(null);
+                }}
+              />
+            </div>
           ) : (
-            <Hero
-              key="hero"
+            <LandingPage
+              key="landing"
               onGenerate={handleGenerate}
               loading={loading}
               error={error}
@@ -88,4 +94,9 @@ function Index() {
       </main>
     </div>
   );
+}
+
+function usernameFromGithubUrl(url: string): string {
+  const segments = url.split("/").filter(Boolean);
+  return segments[segments.length - 1] || "octocat";
 }

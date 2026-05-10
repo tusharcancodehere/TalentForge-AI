@@ -1,0 +1,17 @@
+{
+  "name": "TalentForge AI",
+  "short_name": "TalentForge",
+  "description": "Portfolio and resume intelligence from GitHub repositories.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1323",
+  "theme_color": "#12121B",
+  "icons": [
+    {
+      "src": "/brandmark.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

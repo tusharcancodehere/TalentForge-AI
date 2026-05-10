@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+__pycache__
+*.pdf
+visitor_stats.json
+.env
+.tanstack
+.output
+.vinxi
+.wrangler
+bun.lock

@@ -1,10 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 /*
  * Design system definition.
@@ -67,10 +66,10 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.15 0.02 260);
-  --accent-glow: oklch(0.65 0.22 295);
-  --accent-glow-2: oklch(0.7 0.18 200);
+  --background: oklch(0.985 0.008 250);
+  --foreground: oklch(0.16 0.02 260);
+  --accent-glow: oklch(0.69 0.2 255);
+  --accent-glow-2: oklch(0.73 0.19 185);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
@@ -104,10 +103,10 @@
 }
 
 .dark {
-  --background: oklch(0.13 0.025 270);
+  --background: oklch(0.13 0.03 270);
   --foreground: oklch(0.98 0.005 250);
-  --accent-glow: oklch(0.78 0.18 195);
-  --accent-glow-2: oklch(0.7 0.22 295);
+  --accent-glow: oklch(0.78 0.19 196);
+  --accent-glow-2: oklch(0.74 0.2 285);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
@@ -150,6 +149,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
 
@@ -166,6 +166,72 @@
     box-shadow:
       0 1px 0 0 color-mix(in oklab, var(--foreground) 6%, transparent) inset,
       0 20px 60px -20px color-mix(in oklab, var(--accent-glow) 25%, transparent);
+  }
+
+  .glass:hover {
+    box-shadow:
+      0 1px 0 0 color-mix(in oklab, var(--foreground) 9%, transparent) inset,
+      0 24px 80px -24px color-mix(in oklab, var(--accent-glow) 35%, transparent);
+  }
+
+  .hero-shell {
+    background:
+      linear-gradient(
+        145deg,
+        color-mix(in oklab, var(--background) 76%, transparent),
+        color-mix(in oklab, var(--accent-glow) 11%, transparent)
+      );
+    border: 1px solid color-mix(in oklab, var(--accent-glow) 24%, transparent);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklab, white 16%, transparent) inset,
+      0 30px 100px -35px color-mix(in oklab, var(--accent-glow) 50%, transparent);
+  }
+
+  .brand-wordmark {
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 18px color-mix(in oklab, var(--accent-glow) 32%, transparent);
+  }
+
+  .brand-kicker {
+    color: color-mix(in oklab, var(--foreground) 78%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent-glow) 24%, transparent);
+    background: color-mix(in oklab, var(--background) 70%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .brand-button {
+    background: linear-gradient(120deg, var(--accent-glow), var(--accent-glow-2));
+    color: oklch(0.13 0.025 270);
+    box-shadow:
+      0 14px 45px -16px color-mix(in oklab, var(--accent-glow) 72%, transparent),
+      0 1px 0 color-mix(in oklab, white 32%, transparent) inset;
+  }
+
+  @keyframes shineMove {
+    0% {
+      transform: translateX(0%);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.9;
+    }
+    70% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translateX(390%);
+      opacity: 0;
+    }
+  }
+
+  .hero-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, white 14%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, white 14%, transparent) 1px, transparent 1px);
+    background-size: 30px 30px;
+    mask-image: radial-gradient(circle at 50% 40%, black, transparent 75%);
+    -webkit-mask-image: radial-gradient(circle at 50% 40%, black, transparent 75%);
   }
 
   .dark .glass {
@@ -194,5 +260,17 @@
       radial-gradient(50% 50% at 50% 90%, color-mix(in oklab, var(--accent-glow) 25%, transparent), transparent 70%);
     filter: blur(40px);
     pointer-events: none;
+  }
+
+  .ambient-bg::after {
+    content: "";
+    position: fixed;
+    inset: -15%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(26% 30% at 12% 78%, color-mix(in oklab, var(--accent-glow-2) 35%, transparent), transparent 70%),
+      radial-gradient(30% 24% at 84% 18%, color-mix(in oklab, var(--accent-glow) 28%, transparent), transparent 70%);
+    filter: blur(55px);
   }
 }

@@ -1,49 +1,75 @@
-export type GitHubProfile = {
-  login: string;
+export type PortfolioUser = {
   name: string | null;
   avatar_url: string;
-  html_url: string;
+  github_url: string;
   bio: string | null;
   location: string | null;
-  blog: string | null;
 };
 
-export type GitHubRepo = {
-  id: number;
-  name: string;
-  description: string | null;
-  html_url: string;
+export type PortfolioProject = {
+  title: string;
+  ai_description: string;
   language: string | null;
-  stargazers_count: number;
-  forks_count: number;
+  stars: number;
+  url: string;
 };
 
-export async function fetchGitHubUser(
+export type MarketSkillRating = {
+  skill: string;
+  score: number;
+};
+
+export type PortfolioResponse = {
+  user: PortfolioUser;
+  projects: PortfolioProject[];
+  tech_stack: string[];
+  market_insights: {
+    summary: string;
+    selection_probability: number;
+    confidence: "Low" | "Medium" | "High";
+    recommended_roles: string[];
+    market_skill_ratings: MarketSkillRating[];
+    avg_package: {
+      currency: string;
+      min: number;
+      max: number;
+      period: string;
+      note: string;
+    };
+    strengths: string[];
+    gaps: string[];
+    action_plan: string[];
+    career_growth: {
+      current_score: number;
+      target_score: number;
+      recommended_skills: { skill: string; why: string }[];
+      roadmap_summary: string;
+    };
+  };
+  pagination: {
+    page: number;
+    page_size: number;
+    total_projects: number;
+    total_pages: number;
+  };
+};
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+  || "";
+
+export async function fetchPortfolioData(
   username: string,
-): Promise<{ profile: GitHubProfile; repos: GitHubRepo[] }> {
-  const headers = { Accept: "application/vnd.github+json" };
-
-  const [profileRes, reposRes] = await Promise.all([
-    fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, { headers }),
-    fetch(
-      `https://api.github.com/users/${encodeURIComponent(
-        username,
-      )}/repos?sort=stargazers&per_page=6`,
-      { headers },
-    ),
-  ]);
-
-  if (profileRes.status === 404) {
+  page: number,
+  pageSize: number,
+): Promise<PortfolioResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/portfolio/${encodeURIComponent(username)}?page=${page}&page_size=${pageSize}`,
+  );
+  if (response.status === 404) {
     throw new Error("GitHub user not found.");
   }
-  if (!profileRes.ok) {
-    throw new Error(`GitHub API error (${profileRes.status})`);
+  if (!response.ok) {
+    throw new Error(`Backend API error (${response.status})`);
   }
-  if (!reposRes.ok) {
-    throw new Error(`GitHub API error (${reposRes.status})`);
-  }
-
-  const profile = (await profileRes.json()) as GitHubProfile;
-  const repos = (await reposRes.json()) as GitHubRepo[];
-  return { profile, repos };
+  return (await response.json()) as PortfolioResponse;
 }
