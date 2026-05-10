@@ -916,17 +916,20 @@ async def get_stats() -> dict[str, int]:
 
 
 # ─── Consolidated Frontend Serving ───────────
-# We need to point to dist/client because that's where Vite/TanStack puts the UI
 _base_path = os.path.dirname(os.path.abspath(__file__))
-_frontend_dist = os.path.join(_base_path, "dist", "client")
+
+# Check both 'dist' and 'dist/client' to be safe
+_dist_path = os.path.join(_base_path, "dist")
+_client_path = os.path.join(_dist_path, "client")
+_frontend_dist = _client_path if os.path.isdir(_client_path) else _dist_path
 
 if os.path.isdir(_frontend_dist):
-    # 1. Mount the assets folder (where your CSS/JS files live)
+    # 1. Mount the assets folder
     _assets_path = os.path.join(_frontend_dist, "assets")
     if os.path.isdir(_assets_path):
         app.mount("/assets", StaticFiles(directory=_assets_path), name="assets")
 
-    # 2. Catch-all for the index.html (the "Face" of your app)
+    # 2. Catch-all for index.html
     @app.get("/{catchall:path}")
     async def serve_frontend(catchall: str):
         if catchall.startswith("api"):
@@ -941,5 +944,5 @@ else:
     async def _no_frontend(catchall: str):
         return JSONResponse(
             status_code=503,
-            content={"error": "Frontend build not found. Ensure 'npm run build' outputs to dist/client."},
+            content={"error": "Frontend build not found. Ensure 'npm run build' completed."},
         )
