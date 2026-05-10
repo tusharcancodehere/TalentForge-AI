@@ -148,25 +148,65 @@ export function Dashboard({
               <Github className="h-3.5 w-3.5" /> github
             </a>
           </div>
-          <div className="mt-5 flex flex-col sm:flex-row items-center sm:items-start gap-2">
-            <button
+          <div className="mt-5 flex flex-col sm:flex-row items-center sm:items-start gap-3">
+            <motion.button
               onClick={handleDownload}
               disabled={downloading}
-              className="glass rounded-xl px-4 py-2.5 inline-flex items-center gap-2 font-mono text-xs sm:text-sm hover:opacity-100 opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ color: "var(--accent-glow)" }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 22 }}
+              className="group glass relative overflow-hidden rounded-xl px-5 py-2.5 inline-flex items-center gap-2 font-mono text-xs sm:text-sm transition-shadow disabled:cursor-not-allowed disabled:opacity-70"
+              style={{
+                color: "var(--accent-glow)",
+                boxShadow:
+                  "0 0 0 1px color-mix(in oklab, var(--accent-glow) 22%, transparent), 0 8px 28px -12px color-mix(in oklab, var(--accent-glow) 55%, transparent)",
+              }}
             >
-              {downloading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download PDF Resume
-                </>
-              )}
-            </button>
+              {/* animated sheen */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-0 group-hover:opacity-100 group-hover:translate-x-[260%] transition-all duration-700 ease-out"
+              />
+              {/* progress fill */}
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 transition-[width] duration-200 ease-out"
+                style={{
+                  width: `${progress}%`,
+                  background:
+                    "linear-gradient(90deg, color-mix(in oklab, var(--accent-glow) 28%, transparent), color-mix(in oklab, var(--accent-glow-2, var(--accent-glow)) 22%, transparent))",
+                }}
+              />
+              <span className="relative z-10 inline-flex items-center gap-2">
+                <AnimatePresence mode="wait" initial={false}>
+                  {downloading ? (
+                    <motion.span
+                      key="loading"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.18 }}
+                      className="inline-flex items-center gap-2"
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      generating… {Math.round(progress)}%
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="idle"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.18 }}
+                      className="inline-flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110" />
+                      Download PDF Resume
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
+            </motion.button>
             {downloadError && (
               <span className="font-mono text-xs text-red-400/80">
                 &gt; error: {downloadError}
