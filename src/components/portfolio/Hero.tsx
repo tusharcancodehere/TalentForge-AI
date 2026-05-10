@@ -1,13 +1,21 @@
-import { Github, Sparkles, ArrowRight } from "lucide-react";
+import { Github, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-export function Hero({ onGenerate }: { onGenerate: (username: string) => void }) {
+export function Hero({
+  onGenerate,
+  loading = false,
+  error = null,
+}: {
+  onGenerate: (username: string) => void;
+  loading?: boolean;
+  error?: string | null;
+}) {
   const [username, setUsername] = useState("");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) onGenerate(username.trim());
+    if (username.trim() && !loading) onGenerate(username.trim());
   };
 
   return (
@@ -55,6 +63,7 @@ export function Hero({ onGenerate }: { onGenerate: (username: string) => void })
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="github-username"
+              disabled={loading}
               className="font-mono bg-transparent outline-none w-full text-sm sm:text-base placeholder:opacity-40"
             />
           </div>
@@ -62,6 +71,7 @@ export function Hero({ onGenerate }: { onGenerate: (username: string) => void })
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.97 }}
             type="submit"
+            disabled={loading}
             className="font-mono h-14 px-7 rounded-2xl text-sm font-semibold relative overflow-hidden"
             style={{
               background:
@@ -72,10 +82,29 @@ export function Hero({ onGenerate }: { onGenerate: (username: string) => void })
             }}
           >
             <span className="inline-flex items-center gap-2">
-              Generate <ArrowRight className="h-4 w-4" />
+              {loading ? (
+                <>
+                  Generating <Loader2 className="h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  Generate <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </span>
           </motion.button>
         </form>
+
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 font-mono text-xs"
+            style={{ color: "oklch(0.7 0.18 25)" }}
+          >
+            {`> error: ${error}`}
+          </motion.p>
+        )}
 
         <div className="mt-6 flex items-center justify-center gap-4 text-xs font-mono opacity-50">
           <span>$ portfolio --user octocat</span>
