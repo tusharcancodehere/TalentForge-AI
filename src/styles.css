@@ -4,6 +4,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 /*
  * Design system definition.
  *
@@ -19,6 +21,8 @@
  */
 
 @theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -63,8 +67,10 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --background: oklch(0.985 0.005 250);
+  --foreground: oklch(0.15 0.02 260);
+  --accent-glow: oklch(0.65 0.22 295);
+  --accent-glow-2: oklch(0.7 0.18 200);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
@@ -98,8 +104,10 @@
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
+  --background: oklch(0.13 0.025 270);
+  --foreground: oklch(0.98 0.005 250);
+  --accent-glow: oklch(0.78 0.18 195);
+  --accent-glow-2: oklch(0.7 0.22 295);
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
@@ -140,5 +148,51 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  .glass {
+    background-color: color-mix(in oklab, var(--background) 55%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+    box-shadow:
+      0 1px 0 0 color-mix(in oklab, var(--foreground) 6%, transparent) inset,
+      0 20px 60px -20px color-mix(in oklab, var(--accent-glow) 25%, transparent);
+  }
+
+  .dark .glass {
+    background-color: color-mix(in oklab, white 5%, transparent);
+    border-color: color-mix(in oklab, white 14%, transparent);
+  }
+
+  .glow-ring:focus-within {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--accent-glow) 60%, transparent),
+      0 0 30px -4px color-mix(in oklab, var(--accent-glow) 50%, transparent);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 24px color-mix(in oklab, var(--accent-glow) 50%, transparent);
+  }
+
+  .ambient-bg::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: -1;
+    background:
+      radial-gradient(40% 40% at 20% 20%, color-mix(in oklab, var(--accent-glow) 35%, transparent), transparent 70%),
+      radial-gradient(40% 40% at 80% 30%, color-mix(in oklab, var(--accent-glow-2) 30%, transparent), transparent 70%),
+      radial-gradient(50% 50% at 50% 90%, color-mix(in oklab, var(--accent-glow) 25%, transparent), transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
   }
 }
