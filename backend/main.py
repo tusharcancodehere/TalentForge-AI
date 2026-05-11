@@ -54,9 +54,15 @@ if frontend_url:
 elif app_env in {"dev", "development", "local"}:
     allowed_origins = ["*"]
 else:
-    raise RuntimeError(
-        "Fatal boot error: FRONTEND_URL must be set outside explicit dev environments."
-    )
+    configured_origins = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if configured_origins:
+        allowed_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+    else:
+        logger.warning(
+            "FRONTEND_URL/ALLOWED_ORIGINS not set in non-dev environment; "
+            "falling back to wildcard CORS. Set FRONTEND_URL for strict production mode."
+        )
+        allowed_origins = ["*"]
 
 app = FastAPI(title="TalentForge AI Backend", version="1.0.0", lifespan=lifespan)
 
