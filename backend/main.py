@@ -23,17 +23,28 @@ logging.basicConfig(
 logger = logging.getLogger("talentforge")
 
 # Fail-fast boot validation for critical runtime dependencies.
+# Redis/Upstash remains optional because the application already supports
+# degraded mode when leaderboard/state services are not configured.
 REQUIRED_ENV_KEYS = [
     "GEMINI_API_KEY",
     "GITHUB_TOKEN",
-    "UPSTASH_REDIS_REST_URL",
-    "UPSTASH_REDIS_REST_TOKEN",
 ]
 missing_keys = [key for key in REQUIRED_ENV_KEYS if not os.getenv(key)]
 if missing_keys:
     raise RuntimeError(
         "Fatal boot error: Missing required environment variables: "
         + ", ".join(missing_keys)
+    )
+
+optional_service_keys = [
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+]
+missing_optional = [key for key in optional_service_keys if not os.getenv(key)]
+if missing_optional:
+    logger.warning(
+        "Optional services disabled due to missing env vars: %s",
+        ", ".join(missing_optional),
     )
 
 app_env = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "production")).strip().lower()
