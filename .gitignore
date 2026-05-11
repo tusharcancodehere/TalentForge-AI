@@ -35,3 +35,4 @@ __pycache__/
 *.pdf
 visitor_stats.json
 bun.lock
+!backend/
