@@ -1481,7 +1481,35 @@ async def get_career_architect(username: str) -> dict[str, Any]:
             profile=profile, repos=top_repos_for_analysis,
             tech_stack=tech_stack, grit_meta=grit_meta,
         )
-        return analysis
+
+        # Merge with base portfolio data for Dashboard rendering
+        return {
+            **analysis,
+            "user": {
+                "name": profile.get("name") or profile.get("login"),
+                "avatar_url": profile.get("avatar_url"),
+                "bio": profile.get("bio"),
+                "location": profile.get("location"),
+                "github_url": profile.get("html_url"),
+            },
+            "projects": [
+                {
+                    "title": r.get("name"),
+                    "url": r.get("html_url"),
+                    "stars": r.get("stargazers_count"),
+                    "language": r.get("language"),
+                    "ai_description": r.get("description"),
+                }
+                for r in all_original_repos[:6]
+            ],
+            "tech_stack": tech_stack,
+            "pagination": {
+                "page": 1,
+                "page_size": 6,
+                "total_projects": len(all_original_repos),
+                "total_pages": (len(all_original_repos) + 5) // 6,
+            }
+        }
 
     except HTTPException:
         raise
@@ -1507,6 +1535,44 @@ async def chat_with_coach(request: CoachChatRequest) -> dict[str, Any]:
         return {"response": text}
     except Exception as exc:
         logger.error("Error in coach chat: %s", exc)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+class PDFExportRequest(BaseModel):
+    username: str
+    resume_html: str
+    architect_classification: str
+
+@app.post("/api/cv/export")
+async def export_cv(req: PDFExportRequest) -> StreamingResponse:
+    try:
+        import re
+        text_content = re.sub(r'<[^>]+>', '', req.resume_html)
+        # unescape html entities roughly
+        import html
+        text_content = html.unescape(text_content).strip()
+
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        pdf.set_margins(left=15, top=15, right=15)
+        
+        pdf.set_font("Helvetica", "B", 24)
+        pdf.cell(0, 12, req.username, new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.set_font("Helvetica", "I", 12)
+        pdf.cell(0, 10, req.architect_classification, new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.ln(5)
+        
+        pdf.set_font("Helvetica", "", 11)
+        pdf.multi_cell(0, 6, text_content.encode('latin-1', 'replace').decode('latin-1'))
+        
+        pdf_bytes = _pdf_to_bytes(pdf)
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{req.username}_resume.pdf"'},
+        )
+    except Exception as exc:
+        logger.error("Error in PDF export: %s", exc)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/cv/{username}")

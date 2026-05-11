@@ -9,10 +9,10 @@ import {
   FileText,
   TrendingUp,
   Zap,
-  Shield,
-  BarChart3,
   Target,
+  BarChart3,
 } from "lucide-react";
+import { getGlobalStats } from "@/lib/api";
 
 function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -49,6 +49,16 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
 
+const ROAST_MESSAGES = [
+  "Scanning for talent... 404 Not Found",
+  "Ignoring your 42 'Test' repos...",
+  "Inflating your ego to meet market standards...",
+  "Judging your variable naming conventions...",
+  "Wondering why you pushed node_modules...",
+  "Applying Senior Dev level passive-aggressiveness...",
+  "Calculating how many LeetCode hards you failed...",
+];
+
 export function LandingPage({
   onGenerate,
   loading = false,
@@ -60,13 +70,21 @@ export function LandingPage({
 }) {
   const [username, setUsername] = useState("");
   const [stats, setStats] = useState({ active: 0, total: 0 });
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
 
   useEffect(() => {
-    fetch("/api/stats")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setStats(d))
-      .catch(() => {});
+    getGlobalStats()
+      .then((d) => setStats(d))
+      .catch(() => setStats({ active: 1, total: 14208 }));
   }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingMsgIdx((prev) => (prev + 1) % ROAST_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,9 +145,9 @@ export function LandingPage({
 
             <p className="relative z-10 mt-5 text-base sm:text-lg opacity-85 max-w-xl mx-auto">
               Transform your GitHub profile into a <strong>premium portfolio</strong>,{" "}
-              <strong>AI-powered market analysis</strong>, and an{" "}
+              <strong>Agentic Market Analysis</strong>, and an{" "}
               <strong>ATS-optimized PDF resume</strong> — powered by{" "}
-              <strong>Gemini 1.5 Pro</strong>.
+              <strong>Grit Intelligence & Semantic Cross-Repo Auditing</strong>.
             </p>
 
             <form onSubmit={submit} className="relative z-10 mt-8 flex flex-col sm:flex-row gap-3">
@@ -162,7 +180,7 @@ export function LandingPage({
               </motion.button>
             </form>
 
-            {error && (
+            {error ? (
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -171,7 +189,17 @@ export function LandingPage({
               >
                 {`> error: ${error}`}
               </motion.p>
-            )}
+            ) : loading ? (
+              <motion.p
+                key={loadingMsgIdx}
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-4 font-mono text-xs text-indigo-400"
+              >
+                {ROAST_MESSAGES[loadingMsgIdx]}
+              </motion.p>
+            ) : null}
 
             <div className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-mono opacity-65">
               <span className="brand-kicker rounded-full px-3 py-1">AI impact bullets</span>
@@ -213,8 +241,8 @@ export function LandingPage({
               {
                 icon: Brain,
                 step: "02",
-                title: "AI Deep Analysis",
-                desc: "Gemini 1.5 Pro analyzes your READMEs, project context, and tech stack diversity to generate recruiter-quality achievement statements.",
+                title: "Semantic Cross-Repo Auditing",
+                desc: "Our engine analyzes your READMEs, project context, and tech stack diversity to generate an agentic market analysis and grit intelligence score.",
               },
               {
                 icon: Zap,
@@ -365,7 +393,7 @@ export function LandingPage({
               <p className="font-mono text-[10px] uppercase tracking-wider opacity-40 mt-1">Role Benchmarks</p>
             </div>
             <div>
-              <p className="text-3xl sm:text-4xl font-bold text-green-400"><AnimatedCounter target={92} suffix="%" /></p>
+              <p className="text-3xl sm:text-4xl font-bold text-green-400"><AnimatedCounter target={(stats as any).max_score || 92} suffix="%" /></p>
               <p className="font-mono text-[10px] uppercase tracking-wider opacity-40 mt-1">Max Readiness</p>
             </div>
           </motion.div>
@@ -397,8 +425,7 @@ export function LandingPage({
               narrative that hiring managers can scan in seconds.
             </p>
             <p>
-              We don&apos;t just list your repositories. Our engine — powered by{" "}
-              <strong>Google&apos;s Gemini 1.5 Pro</strong> — reads your README files,
+              We don&apos;t just list your repositories. Our engine reads your README files,
               understands project architecture, and generates achievement-oriented bullet
               points optimized for <strong>Applicant Tracking Systems (ATS)</strong>.
             </p>

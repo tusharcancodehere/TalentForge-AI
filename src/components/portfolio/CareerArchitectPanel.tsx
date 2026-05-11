@@ -1,11 +1,14 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Briefcase, DollarSign, MessageSquare, Send, Loader2, Zap,
-  Target, ArrowRight, Shield, Layers, Code, Hash, Globe,
+  Target, ArrowRight, Shield, Layers, Code, Hash, Globe, Download
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type { CareerArchitectResponse } from "@/lib/github";
 import { API_BASE_URL } from "@/lib/github";
+import { toast } from "sonner";
+
+import { chatWithCoach, exportCV } from "@/lib/api";
 
 type ChatMessage = { role: "user" | "coach"; content: string };
 
@@ -70,6 +73,7 @@ export function CareerArchitectPanel({
   const [currentMessage, setCurrentMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showResume, setShowResume] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,17 +87,34 @@ export function CareerArchitectPanel({
     setCurrentMessage("");
     setIsTyping(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/coach/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ architect_data: data, message: newMsg.content, history: chatMessages }),
-      });
-      const result = await response.json();
+      const result = await chatWithCoach(newMsg.content, data);
       setChatMessages((prev) => [...prev, { role: "coach", content: result.response }]);
     } catch {
       setChatMessages((prev) => [...prev, { role: "coach", content: "Network issue. Please try again." }]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!data) return;
+    setIsExporting(true);
+    const toastId = toast.loading("Generating Premium CV...");
+    try {
+      const blob = await exportCV("developer", data.resume_html, data.architect_classification);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "talentforge_resume.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("CV ready", { id: toastId, description: "Resume downloaded successfully" });
+    } catch (e) {
+      toast.error("Export failed", { id: toastId, description: e instanceof Error ? e.message : "Unknown error" });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -110,29 +131,25 @@ export function CareerArchitectPanel({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-md"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-5xl mx-auto rounded-3xl relative"
+        style={{
+          background: "linear-gradient(145deg, rgba(15,23,42,0.97), rgba(10,15,30,0.99))",
+          boxShadow: "0 0 120px rgba(99,102,241,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.06)",
+        }}
       >
-        <motion.div
-          initial={{ scale: 0.92, opacity: 0, y: 30 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.92, opacity: 0, y: 30 }}
-          transition={{ type: "spring", stiffness: 260, damping: 24 }}
-          className="w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl relative"
-          style={{
-            background: "linear-gradient(145deg, rgba(15,23,42,0.97), rgba(10,15,30,0.99))",
-            boxShadow: "0 0 120px rgba(99,102,241,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}
+        {/* Back Button */}
+        <button onClick={onClose}
+          className="absolute top-5 right-5 p-2 rounded-full hover:bg-white/10 transition-colors z-10 backdrop-blur-sm"
         >
-          {/* Close */}
-          <button onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-full hover:bg-white/10 transition-colors z-10 backdrop-blur-sm"
-          >
-            <X className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity" />
-          </button>
+          <X className="h-5 w-5 opacity-60 hover:opacity-100 transition-opacity" />
+        </button>
 
-          <div className="p-6 sm:p-10 space-y-8">
+        <div className="p-6 sm:p-10 space-y-8">
             {/* ═══ Header ═══ */}
             <div className="flex items-start gap-4 justify-between flex-wrap">
               <div className="flex items-start gap-4">
@@ -315,14 +332,24 @@ export function CareerArchitectPanel({
               </button>
             </motion.div>
 
-            {/* ═══ Snap-Resume Toggle ═══ */}
+            {/* ═══ Snap-Resume Toggle & Export ═══ */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <button
-                onClick={() => setShowResume(!showResume)}
-                className="w-full py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-widest text-white/70"
-              >
-                {showResume ? "Hide Snap-Resume" : "View Snap-Resume (HTML)"}
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="w-full sm:flex-1 py-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-widest text-indigo-300 disabled:opacity-50"
+                >
+                  {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Export Premium PDF
+                </button>
+                <button
+                  onClick={() => setShowResume(!showResume)}
+                  className="w-full sm:flex-1 py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-2 font-mono text-xs uppercase tracking-widest text-white/70"
+                >
+                  {showResume ? "Hide Snap-Resume" : "View Snap-Resume (HTML)"}
+                </button>
+              </div>
               
               <AnimatePresence>
                 {showResume && (
@@ -398,8 +425,7 @@ export function CareerArchitectPanel({
               </div>
             </div>
 
-          </div>
-        </motion.div>
+        </div>
       </motion.div>
     </AnimatePresence>
   );

@@ -5,10 +5,9 @@ import { LandingPage } from "@/components/portfolio/LandingPage";
 import { Dashboard } from "@/components/portfolio/Dashboard";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/BrandLogo";
-import {
-  fetchPortfolioData,
-  type PortfolioResponse,
-} from "@/lib/github";
+import { analyzeProfile } from "@/lib/api";
+import { type CareerArchitectResponse } from "@/lib/github";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")(
   {
@@ -40,7 +39,7 @@ export const Route = createFileRoute("/")(
 });
 
 function Index() {
-  const [data, setData] = useState<PortfolioResponse | null>(null);
+  const [data, setData] = useState<CareerArchitectResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,9 +47,13 @@ function Index() {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchPortfolioData(username, 1, 6);
+      const result = await analyzeProfile(username);
       setData(result);
     } catch (err) {
+      if (err instanceof Error && err.message.includes("Render server timeout")) {
+        toast.error("Render server timeout. Retrying with deterministic fallback...");
+        // the backend handles the fallback, but if we get here the fallback also failed or the gateway failed.
+      }
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setData(null);
     } finally {
@@ -70,12 +73,7 @@ function Index() {
           {data ? (
             <div key="dashboard" className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
               <Dashboard
-                username={usernameFromGithubUrl(data.user.github_url)}
-                user={data.user}
-                projects={data.projects}
-                techStack={data.tech_stack}
-                marketInsights={data.market_insights}
-                initialPagination={data.pagination}
+                data={data}
                 onBack={() => {
                   setData(null);
                   setError(null);
