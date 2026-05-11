@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
+from traceback import format_exc
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,19 +18,58 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
 )
 logger = logging.getLogger("talentforge")
 
-ALLOWED_ORIGINS: list[str] = os.getenv(
-    "ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000"
-).split(",")
+# Fail-fast boot validation for critical runtime dependencies.
+REQUIRED_ENV_KEYS = [
+    "GEMINI_API_KEY",
+    "GITHUB_TOKEN",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+]
+missing_keys = [key for key in REQUIRED_ENV_KEYS if not os.getenv(key)]
+if missing_keys:
+    raise RuntimeError(
+        "Fatal boot error: Missing required environment variables: "
+        + ", ".join(missing_keys)
+    )
+
+app_env = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "production")).strip().lower()
+frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if frontend_url:
+    allowed_origins = [frontend_url]
+elif app_env in {"dev", "development", "local"}:
+    allowed_origins = ["*"]
+else:
+    raise RuntimeError(
+        "Fatal boot error: FRONTEND_URL must be set outside explicit dev environments."
+    )
 
 app = FastAPI(title="TalentForge AI Backend", version="1.0.0", lifespan=lifespan)
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(
+        "Unhandled exception on %s %s: %s\n%s",
+        request.method,
+        request.url.path,
+        exc,
+        format_exc(),
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error_code": 500,
+            "message": "The Architect encountered a systemic anomaly. Please try again.",
+        },
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
