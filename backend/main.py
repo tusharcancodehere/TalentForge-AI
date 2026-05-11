@@ -95,7 +95,13 @@ app.add_middleware(
 app.include_router(api_router)
 
 _base_path = os.path.dirname(os.path.abspath(__file__))
-_dist_path = os.path.join(_base_path, "dist")
+_candidate_dist_paths = [
+    # Local/dev possibility if dist is co-located with backend.
+    os.path.join(_base_path, "dist"),
+    # Docker/runtime layout where dist is copied to /app/dist.
+    os.path.join(os.path.dirname(_base_path), "dist"),
+]
+_dist_path = next((p for p in _candidate_dist_paths if os.path.isdir(p)), _candidate_dist_paths[0])
 _client_path = os.path.join(_dist_path, "client")
 _frontend_dist = _client_path if os.path.isdir(_client_path) else _dist_path
 
