@@ -54,7 +54,39 @@ export type PortfolioResponse = {
   };
 };
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+// ---------------------------------------------------------------------------
+// Career Architect — V2 (TalentForge Protocol)
+// ---------------------------------------------------------------------------
+export type CareerArchitectResponse = {
+  executive_summary: string;
+  architect_classification: "System Architect" | "Developer";
+  resume_html: string;
+  blueprint: {
+    project_name: string;
+    elevator_pitch: string;
+    the_stack: string[];
+    core_architecture: string;
+    implementation_milestones: string[];
+    market_value_boost: string;
+  };
+  economic_analysis: {
+    readiness_score: number;
+    compensation: {
+      INR: string;
+      USD: string;
+    };
+  };
+  seo_metadata: {
+    og_title: string;
+    og_description: string;
+    json_ld: any;
+    target_keywords: string[];
+  };
+  social_share_narrative: string;
+  error_code: string | null;
+};
+
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
   || "";
 
 export async function fetchPortfolioData(
@@ -72,4 +104,19 @@ export async function fetchPortfolioData(
     throw new Error(`Backend API error (${response.status})`);
   }
   return (await response.json()) as PortfolioResponse;
+}
+
+export async function fetchCareerArchitect(
+  username: string,
+): Promise<CareerArchitectResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/architect/${encodeURIComponent(username)}`,
+  );
+  if (response.status === 404) {
+    throw new Error("GitHub user not found.");
+  }
+  if (!response.ok) {
+    throw new Error(`Backend API error (${response.status})`);
+  }
+  return (await response.json()) as CareerArchitectResponse;
 }

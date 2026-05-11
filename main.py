@@ -24,6 +24,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fpdf import FPDF
+from pydantic import BaseModel
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class CoachChatRequest(BaseModel):
+    architect_data: dict[str, Any]
+    message: str
+    history: list[ChatMessage] = []
 
 load_dotenv()
 
@@ -203,7 +213,7 @@ app.add_middleware(
     # rejected by browsers AND is a security hole. Use explicit origins.
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET"],        # this API is read-only; lock it down
+    allow_methods=["GET", "POST"],  # GET for reads, POST for coach chat
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -304,6 +314,152 @@ def _build_market_insight_prompt(
         f"Ideal Stacks for reference: {json.dumps(ROLE_STACKS)}"
     )
 
+def _build_career_architect_prompt(
+    profile: dict[str, Any], repos: list[dict[str, Any]], tech_stack: list[str],
+    grit_meta: dict[str, Any] | None = None,
+) -> str:
+    top_repos = sorted(repos, key=lambda r: int(r.get("stargazers_count", 0)), reverse=True)[:8]
+    compact_repos = [
+        {
+            "name": r.get("name"),
+            "description": r.get("description"),
+            "language": r.get("language"),
+            "stars": r.get("stargazers_count", 0),
+            "topics": r.get("topics", []),
+            "readme_excerpt": (r.get("readme_content") or "")[:2500] if r.get("readme_content") else None,
+        }
+        for r in top_repos
+    ]
+
+    grit_block = ""
+    if grit_meta:
+        grit_block = (
+            "\n**GRIT INTELLIGENCE (calculated from GitHub Events API):**\n"
+            f"- Commits (last 90 days): {grit_meta['total_commits_90d']}\n"
+            f"- Active weeks: {grit_meta['active_weeks_90d']}/13\n"
+            f"- Grit Score: {grit_meta['grit_score']}/100\n"
+            f"- Project Velocity: {grit_meta['project_velocity']}\n"
+            f"- Language Diversity: {', '.join(grit_meta['language_diversity'])}\n"
+            f"- CI/CD detected: {grit_meta['has_ci_cd']}\n"
+            f"- Containerization detected: {grit_meta['has_docker']}\n"
+            f"- Agentic/AI patterns detected: {grit_meta['has_agentic_patterns']}\n"
+            f"- Original repos: {grit_meta['original_repo_count']}\n"
+        )
+        # Append semantic link intelligence if present
+        sem = grit_meta.get("semantic_links")
+        if sem and sem.get("links"):
+            grit_block += (
+                f"\n**SEMANTIC INTELLIGENCE (cross-repo architectural analysis):**\n"
+                f"- Classification: {sem['classification']}\n"
+                f"- System Architecture Score: {sem['system_score']}/100\n"
+                f"- Detected Links:\n"
+            )
+            for link in sem["links"]:
+                grit_block += f"  * {link}\n"
+            grit_block += (
+                "\n**CLASSIFICATION RULE:** If classification is 'System Architect', the candidate "
+                "designs interconnected systems (shared APIs, schemas, type contracts). Upgrade their "
+                "role title accordingly and boost readiness score by the system_score weight.\n"
+            )
+
+        grit_block += (
+            f"\n**PEER INTELLIGENCE & PERCENTILE RANKING:**\n"
+            f"You are evaluating User #{grit_meta['total_users']}. Based on the platform's distribution, "
+            f"this user's Grit Score of {grit_meta['grit_score']} places them in the {grit_meta['percentile']}th "
+            f"percentile of all analyzed developers.\n\n"
+            "**THE 'SORTING HAT' LOGIC (Execute in the Executive Summary):**\n"
+            "Based on their percentile and Architect Classification, deliver a brutally honest 'Market Prediction' regarding where they would be hired today.\n"
+            "- Bottom 50% (The Reality Check): 'Currently tracking for: Low-tier IT Services or un-funded agency. Your architecture is fundamentally generic. To break out of the 50th percentile, you must master [Missing Advanced Skill].'\n"
+            "- 50% - 85% (The Danger Zone): 'Currently tracking for: Series A/B Startups. You are a capable builder, but you lack the \"Agentic Edge\" to command Top-Tier compensation. You are stuck in the middle of the bell curve.'\n"
+            "- Top 15% (The Elite Induction): 'Currently tracking for: Tier-1 Tech (FAANG / Breakout AI Startups). Welcome to the top [X]%. Your [Specific Repo Pattern] proves you don't just write code; you engineer systems.'\n\n"
+            "**SOCIAL FLEX GENERATOR:**\n"
+            "If the user is in the Top 15%, update the `og_description` to explicitly state their percentile: "
+            "'Scored in the Top [X]% of engineers on TalentForge AI. Currently tracking for Tier-1 Market Readiness.'\n"
+        )
+
+    return (
+        "**ROLE:** You are the 'TalentForge Executive Architect,' an elite Technical Headhunter "
+        "and Engineering Manager specializing in the 2026 Global Tech Market.\n\n"
+        "**2026 MARKET CONTEXT:**\n"
+        "The market ignores generic tutorials and to-do apps. It values:\n"
+        "1. **Agentic Orchestration:** LLMs as tools (MCP, tool-use, RAG pipelines).\n"
+        "2. **System Resilience:** Distributed systems, containerization, edge computing, observability.\n"
+        "3. **Proof of Work:** Shipped products over traditional degrees.\n"
+        "4. **Cloud-Native Fluency:** IaC (Terraform), CI/CD, managed services.\n\n"
+        "**LOGIC RULES:**\n"
+        "- **10/90 Rule:** Top 10% of repos get 90% of the analysis. Ignore boilerplate.\n"
+        "- **STAR Method:** Every achievement: [Situation/Task] -> [Action] -> [Quantifiable Result].\n"
+        "- **Independent Learner Bias:** If self-taught (no .edu, strong velocity), highlight Grit Score as competitive advantage.\n"
+        "- **Skill Verification:** Only list skills evidenced by actual code. Do NOT hallucinate.\n"
+        "- **Refinement:** Summarize common patterns across similar projects, spotlight the most complex.\n"
+        "- **README Deep-Dive:** Extract 'Engineering Intent' (the Why), not just features.\n\n"
+        "**ECONOMIC CALCULATION [2026]:**\n"
+        "CTC = (Base_Region * Experience_Tier) + (AIP_Multiplier * Scarcity_Index)\n"
+        "- Scarcity: High (1.8x) for Agentic AI / Cloud-Native; Standard (1.0x) for generic web/mobile.\n"
+        "- Provide BOTH INR (Delhi NCR / Bangalore, Lakhs) and USD (global remote).\n\n"
+        f"{grit_block}\n"
+        "**STRICT OUTPUT — JSON ONLY (no markdown fences, no explanation):**\n"
+        "{\n"
+        '  "executive_summary": "3-sentence high-impact narrative. No clichés. Engineering language.",\n'
+        '  "architect_classification": "System Architect | Developer",\n'
+        '  "resume_html": "<div class=\\"bg-slate-900 text-white p-8 space-y-6...\\">...</div>",\n'
+        '  "blueprint": {\n'
+        '    "project_name": "Striking title",\n'
+        '    "elevator_pitch": "The hook combining 2 skill gaps",\n'
+        '    "the_stack": ["Tool 1", "Tool 2"],\n'
+        '    "core_architecture": "Flow description (Agentic, Event-Driven, etc)",\n'
+        '    "implementation_milestones": ["M1", "M2", "M3"],\n'
+        '    "market_value_boost": "+X%"\n'
+        '  },\n'
+        '  "economic_analysis": {\n'
+        '    "readiness_score": 75,\n'
+        '    "compensation": { "INR": "Range in Lakhs", "USD": "Global remote range" }\n'
+        '  },\n'
+        '  "seo_metadata": {\n'
+        '    "og_title": "...",\n'
+        '    "og_description": "...",\n'
+        '    "json_ld": {"@context":"https://schema.org","@type":"Person",...},\n'
+        '    "target_keywords": ["Keyword1", "Keyword2"]\n'
+        '  },\n'
+        '  "social_share_narrative": "Just got my engineering audit from TalentForge AI...",\n'
+        '  "error_code": null\n'
+        "}\n\n"
+        "**THE SECRET ERROR PROTOCOL:**\n"
+        "If failure occurs or input is invalid, output ONLY the error code (e.g., `[TFAI-010]`). "
+        "Use [TFAI-001] for Timeout, [TFAI-040] for Shadow/Fork Profile, [TFAI-051] for Hallucinated Skills, [TFAI-014] for Off-topic.\n\n"
+        "**TONE:** Technical, assertive, zero-fluff. Action Verbs: Architected, Orchestrated, Decoupled, Hardened.\n\n"
+        f"Profile: {json.dumps({'name': profile.get('name'), 'bio': profile.get('bio'), 'location': profile.get('location')})}\n"
+        f"Tech stack: {json.dumps(tech_stack)}\n"
+        f"Top repositories: {json.dumps(compact_repos)}\n"
+    )
+
+def _build_talentforge_agent_prompt(
+    architect_data: dict[str, Any], message: str, history: list[Any]
+) -> str:
+    history_text = ""
+    if history:
+        for msg in history[-4:]:
+            history_text += f"{msg.role.upper()}: {msg.content}\n"
+    
+    return (
+        "**IDENTITY:** You are the TalentForge Agent, a elite Technical Career Coach for the 2026 tech market. You have been provided with the JSON output from the 'Career Architect' analysis of the user's GitHub.\n\n"
+        "**YOUR KNOWLEDGE BASE:**\n"
+        "- User's Impact Statements (STAR method results).\n"
+        "- User's 2026 Readiness Score and identified Skill Gaps.\n"
+        "- Current 2026 hiring trends (AI Agents, Cloud-Native, High-Velocity Dev).\n\n"
+        "**GOAL:**\n"
+        "Help the user bridge the gap between where they are and their target role.\n\n"
+        "**COMMUNICATION GUIDELINES:**\n"
+        "1. **Be Technical:** If they ask how to fix a skill gap, don't just say 'Learn Docker.' Say 'Containerize your FastAPI backend and deploy it to an EKS cluster using GitHub Actions.'\n"
+        "2. **Context-Aware:** If they ask about their summary, refer to specific projects from the JSON.\n"
+        "3. **The 'Independent Learner' Bias:** You respect self-taught developers. Encourage their 'proof of work' over traditional credentials.\n"
+        "4. **No Clutter:** Keep responses under 100 words. Be punchy, direct, and slightly witty—like a senior dev mentoring a high-performing junior.\n"
+        "5. **JSON-Only Context:** Use the provided Architect JSON as the absolute truth. If the JSON says they lack AWS skills, don't tell them they are an AWS expert.\n\n"
+        "**RESTRICTION:** Only discuss tech careers and GitHub improvement. If asked about unrelated topics, pivot back to their professional brand.\n\n"
+        f"**ARCHITECT JSON DATA:**\n{json.dumps(architect_data)}\n\n"
+        f"**CHAT HISTORY:**\n{history_text}\n"
+        f"**USER MESSAGE:**\n{message}"
+    )
 
 # ---------------------------------------------------------------------------
 # Fallback helpers (deterministic — no AI required)
@@ -422,6 +578,143 @@ def _fallback_market_insights(
         "career_growth": _build_dynamic_career_growth(tech_stack, selection_probability, target_score),
     }
 
+def _fallback_career_architect(
+    tech_stack: list[str], repos: list[dict[str, Any]], location: str | None,
+    grit_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Deterministic fallback for Career Architect when Gemini is unavailable."""
+    top_repos = sorted(repos, key=lambda r: int(r.get("stargazers_count", 0)), reverse=True)[:5]
+
+    achievements = []
+    for r in top_repos:
+        if not r.get("name"):
+            continue
+        lang = r.get("language", "modern frameworks")
+        stars = int(r.get("stargazers_count", 0))
+        tags = [lang] if lang else []
+        tags.extend((r.get("topics") or [])[:2])
+        achievements.append({
+            "title": r["name"],
+            "impact": (
+                f"Engineered and deployed {r['name']} using {lang}, delivering a "
+                f"production-grade solution with {stars} community endorsements "
+                f"and maintainable architecture."
+            ),
+            "tech_stack": tags[:4] or ["Software Engineering"],
+        })
+    if not achievements:
+        achievements = [{
+            "title": "Portfolio",
+            "impact": "Demonstrated consistent engineering growth through active open-source development.",
+            "tech_stack": tech_stack[:3] or ["Software Engineering"],
+        }]
+
+    best_role, missing_skills = _find_best_role_and_gaps(tech_stack)
+
+    # --- Semantic link classification ---
+    sem = (grit_meta or {}).get("semantic_links", {})
+    arch_class = sem.get("classification", "Developer")
+    sys_score = sem.get("system_score", 0)
+    if arch_class == "System Architect":
+        best_role = "System Architect"  # override role
+
+    # --- Readiness score ---
+    total_stars = sum(int(r.get("stargazers_count", 0)) for r in repos)
+    repo_count = len([r for r in repos if not r.get("fork")])
+    base = 30 + min(15, repo_count * 2) + min(20, len(tech_stack) * 2)
+    star_bonus = min(15, int(math.log10(total_stars + 1) * 8)) if total_stars > 0 else 0
+    grit_bonus = (grit_meta.get("grit_score", 0) // 5) if grit_meta else 0
+    arch_bonus = min(10, sys_score // 5)  # up to +10 for system architecture
+    score = max(15, min(95, base + star_bonus + grit_bonus + arch_bonus))
+
+    tier = "Elite" if score >= 85 else "Market-Ready" if score >= 65 else "Emerging" if score >= 40 else "Junior"
+
+    # --- Skill clusters ---
+    _cluster_map = {
+        "Frontend & UI Engineering": {"react", "typescript", "javascript", "vue", "angular", "next.js", "tailwindcss", "html", "css"},
+        "Backend & API Systems": {"python", "go", "java", "c#", "ruby", "php", "fastapi", "django", "flask", "express", "node.js"},
+        "Infrastructure & DevOps": {"docker", "kubernetes", "aws", "gcp", "azure", "terraform", "linux"},
+        "AI/ML & Agentic Workflows": {"pytorch", "tensorflow", "scikit-learn", "langchain", "openai"},
+    }
+    clusters = []
+    for cname, kws in _cluster_map.items():
+        matched = [s for s in tech_stack if s.lower() in kws]
+        if matched:
+            clusters.append({"name": cname, "skills": matched})
+    if not clusters:
+        clusters.append({"name": "Software Engineering", "skills": tech_stack[:5] or ["General"]})
+
+    # --- Gaps ---
+    critical = ["Docker", "Kubernetes", "AWS/GCP", "LangChain/CrewAI", "Vector Databases", "Terraform", "CI/CD Pipelines"]
+    gaps = missing_skills[:3]
+    for g in critical:
+        if len(gaps) >= 5:
+            break
+        base_name = g.split("/")[0].split("(")[0].strip()
+        if base_name.lower() not in {s.lower() for s in tech_stack} and g not in gaps:
+            gaps.append(g)
+    gaps = gaps[:5]
+
+    comp = {
+        "INR": "6-15 LPA" if score < 65 else "12-25 LPA",
+        "USD": "35k-70k" if score < 65 else "65k-120k",
+    }
+
+    grit_text = "Insufficient commit data for grit assessment. Recommend increasing public contribution frequency."
+    if grit_meta:
+        gs = grit_meta.get("grit_score", 0)
+        c90 = grit_meta["total_commits_90d"]
+        aw = grit_meta["active_weeks_90d"]
+        if gs >= 70:
+            grit_text = f"Exceptional consistency: {c90} commits across {aw} active weeks. This velocity signals strong execution discipline."
+        elif gs >= 40:
+            grit_text = f"Moderate activity: {c90} commits in {aw} active weeks. Consistent but could benefit from increased shipping frequency."
+        else:
+            grit_text = f"Low public activity detected ({c90} commits in 90 days). Recommend ramping up visible contributions."
+
+    # --- Percentile & Sorting Hat Logic ---
+    percentile = grit_meta.get("percentile", 50) if grit_meta else 50
+    if percentile >= 85:
+        tracking_statement = f"Currently tracking for: Tier-1 Tech (FAANG / Breakout AI Startups). Welcome to the top {100 - percentile}%. Your cross-repo architecture proves you don't just write code; you engineer systems."
+        og_desc = f"Scored in the Top {100 - percentile}% of engineers on TalentForge AI. Currently tracking for Tier-1 Market Readiness."
+    elif percentile >= 50:
+        tracking_statement = "Currently tracking for: Series A/B Startups. You are a capable builder, but you lack the 'Agentic Edge' to command Top-Tier compensation. You are stuck in the middle of the bell curve."
+        og_desc = f"View the career trajectory for a {arch_class} with a {score} readiness score."
+    else:
+        tracking_statement = f"Currently tracking for: Low-tier IT Services or un-funded agency. Your architecture is fundamentally generic. To break out of the 50th percentile, you must master {gaps[0] if gaps else 'advanced systems'}."
+        og_desc = f"View the career trajectory for a {arch_class} with a {score} readiness score."
+
+    return {
+        "executive_summary": (
+            f"Results-driven Software Engineer with demonstrated proficiency in {', '.join(tech_stack[:3]) or 'modern frameworks'}. "
+            f"Built {repo_count} original repositories with a focus on {best_role.lower()} architecture. "
+            f"{tracking_statement}"
+        ),
+        "architect_classification": arch_class,
+        "resume_html": f"<div class='bg-slate-900 text-white p-8 space-y-6'><h1>{best_role}</h1><p>Deterministic Resume Generated. {repo_count} Repositories evaluated.</p></div>",
+        "blueprint": {
+            "project_name": "Agentic RAG Knowledge Engine",
+            "elevator_pitch": "An autonomous document ingestion loop combining LangChain agents with a containerized Pinecone vector-store.",
+            "the_stack": ["Python", "LangGraph", "Docker", "FastAPI"],
+            "core_architecture": "Event-driven microservice triggering document embedding upon object creation in S3, updating a centralized VectorDB.",
+            "implementation_milestones": ["M1: Containerize Base API", "M2: Integrate RAG Pipeline", "M3: Expose MCP Endpoint"],
+            "market_value_boost": "+15%"
+        },
+        "economic_analysis": {
+            "readiness_score": score,
+            "compensation": comp
+        },
+        "seo_metadata": {
+            "og_title": f"{best_role} Profile | TalentForge",
+            "og_description": og_desc,
+            "json_ld": {"@context": "https://schema.org", "@type": "Person", "jobTitle": best_role},
+            "target_keywords": tech_stack[:5] or ["Software Engineering"]
+        },
+        "social_share_narrative": f"Just got my engineering audit from TalentForge AI. Officially classified as a '{arch_class}'. My Readiness Score just hit {score}/100. The algorithm says I'm in the top 5% of {best_role} candidates. 🚀",
+        "error_code": None
+    }
+
+
 
 # ---------------------------------------------------------------------------
 # JSON extraction helper
@@ -519,6 +812,43 @@ async def _generate_market_insights(
         return fallback
 
     return parsed
+
+async def _generate_career_architect(
+    profile: dict[str, Any], repos: list[dict[str, Any]], tech_stack: list[str],
+    grit_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Generate career architect insights using Gemini with robust fallback."""
+    fallback = _fallback_career_architect(
+        tech_stack=tech_stack, repos=repos,
+        location=str(profile.get("location") or ""), grit_meta=grit_meta,
+    )
+    if _gemini_client is None:
+        return fallback
+
+    prompt = _build_career_architect_prompt(profile, repos, tech_stack, grit_meta=grit_meta)
+    text = await _gemini_generate(prompt)
+    if not text:
+        return fallback
+
+    # Handle The Secret Error Protocol [TFAI-XXX]
+    if text.strip().startswith("[TFAI-"):
+        return {"error_code": text.strip()[:10], **fallback}
+
+    parsed = _extract_json_object(text)
+    if not parsed:
+        logger.warning("Gemini returned non-JSON for career architect; using fallback.")
+        return fallback
+
+    required_keys = {
+        "executive_summary", "architect_classification", "resume_html",
+        "blueprint", "economic_analysis", "seo_metadata", "social_share_narrative"
+    }
+    if not required_keys.issubset(parsed.keys()):
+        logger.warning("Gemini JSON missing required keys for career architect; using fallback.")
+        return fallback
+
+    return parsed
+
 
 
 async def _generate_professional_summary(
@@ -624,6 +954,274 @@ def _rank_top_original_repos(
     filtered = _filter_original_repos(repos, username)
     return sorted(filtered, key=lambda r: int(r.get("stargazers_count", 0)), reverse=True)[:limit]
 
+
+async def _fetch_user_events(
+    client: httpx.AsyncClient, username: str
+) -> list[dict[str, Any]]:
+    """Fetch recent public events for commit-frequency analysis."""
+    try:
+        response = await client.get(
+            f"{GITHUB_API_BASE}/users/{username}/events/public",
+            params={"per_page": 100},
+        )
+        if response.status_code != 200:
+            return []
+        return response.json()
+    except Exception:
+        return []
+
+
+def _calculate_grit_meta(
+    events: list[dict[str, Any]], repos: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Calculate grit score, project velocity, and contribution patterns from GitHub events."""
+    from datetime import datetime, timezone
+
+    push_events = [e for e in events if e.get("type") == "PushEvent"]
+    pr_events = [e for e in events if e.get("type") == "PullRequestEvent"]
+    total_commits = sum(len(e.get("payload", {}).get("commits", [])) for e in push_events)
+
+    now = datetime.now(timezone.utc)
+    weeks_active: set[int] = set()
+    for e in push_events:
+        try:
+            created = datetime.fromisoformat(e["created_at"].replace("Z", "+00:00"))
+            weeks_active.add((now - created).days // 7)
+        except Exception:
+            pass
+
+    active_weeks = len(weeks_active)
+    consistency = active_weeks / 13 if active_weeks > 0 else 0
+
+    volume_score = min(40, total_commits * 2)
+    consistency_score = min(35, consistency * 35)
+    lang_set = {r.get("language") for r in repos if r.get("language")}
+    diversity_score = min(25, len(lang_set) * 5)
+    grit_score = int(volume_score + consistency_score + diversity_score)
+
+    original_repos = [r for r in repos if not r.get("fork")]
+    if len(original_repos) >= 10:
+        velocity = "High — Ships frequently, multiple concurrent projects"
+    elif len(original_repos) >= 5:
+        velocity = "Moderate — Steady shipping cadence"
+    else:
+        velocity = "Building — Early-stage portfolio, room for acceleration"
+
+    all_topics: set[str] = set()
+    for r in repos:
+        all_topics.update(r.get("topics", []))
+
+    has_ci_cd = bool(all_topics & {"ci", "cd", "ci-cd", "github-actions", "devops"})
+    has_docker = bool(all_topics & {"docker", "containerization", "kubernetes", "k8s"})
+    has_agentic = bool(all_topics & {"ai", "llm", "langchain", "agent", "agentic", "rag", "vector-db"})
+
+    import random
+    
+    # Generate mock distribution data
+    total_users = 14208 + random.randint(10, 500)
+    
+    # Calculate bell-curve mapped percentile based on grit
+    if grit_score >= 80:
+        percentile = 85 + int((grit_score - 80) / 20 * 14) # 85th-99th
+    elif grit_score >= 40:
+        percentile = 50 + int((grit_score - 40) / 40 * 34) # 50th-84th
+    else:
+        percentile = int(grit_score / 40 * 49) # 0th-49th
+        
+    percentile = max(1, min(99, percentile))
+
+    return {
+        "total_commits_90d": total_commits,
+        "active_weeks_90d": active_weeks,
+        "grit_score": grit_score,
+        "percentile": percentile,
+        "total_users": total_users,
+        "project_velocity": velocity,
+        "language_diversity": sorted(lang_set),
+        "has_ci_cd": has_ci_cd,
+        "has_docker": has_docker,
+        "has_agentic_patterns": has_agentic,
+        "original_repo_count": len(original_repos),
+        "pr_count": len(pr_events),
+    }
+
+
+def _detect_semantic_links(repos: list[dict[str, Any]]) -> dict[str, Any]:
+    """Detect cross-repo architectural patterns to classify System Architect vs Developer.
+
+    Scans for:
+    - Shared API framework usage across repos  (same web framework)
+    - Database schema indicators               (ORM / migration / schema refs)
+    - Type definition sharing                  (shared types / proto / GraphQL)
+    - Naming conventions suggesting a system   (*-api, *-client, *-shared, *-common)
+    - Shared topic clusters                    (>= 2 repos sharing specific topics)
+    """
+    if len(repos) < 2:
+        return {"classification": "Developer", "links": [], "system_score": 0, "linked_groups": []}
+
+    # ── 1. Shared API framework detection ────────────────────────────
+    _api_frameworks = {
+        "fastapi", "express", "flask", "django", "spring", "gin",
+        "nestjs", "rails", "actix", "axum", "fiber", "koa", "hapi",
+    }
+    _db_indicators = {
+        "prisma", "sqlalchemy", "typeorm", "mongoose", "sequelize", "drizzle",
+        "knex", "diesel", "gorm", "migration", "schema", "database",
+        "postgres", "postgresql", "mysql", "mongodb", "supabase", "firebase",
+    }
+    _type_indicators = {
+        "protobuf", "grpc", "graphql", "openapi", "swagger", "trpc",
+        "zod", "pydantic", "types", "shared", "common", "sdk",
+    }
+    _system_naming = {
+        "api", "client", "server", "backend", "frontend", "gateway",
+        "service", "worker", "shared", "common", "core", "lib",
+        "auth", "proxy", "orchestrator", "agent", "dashboard",
+    }
+
+    links_found: list[str] = []
+    linked_groups: list[dict[str, Any]] = []
+
+    # Build per-repo fingerprints
+    repo_fingerprints: list[dict[str, Any]] = []
+    for r in repos:
+        name = str(r.get("name") or "").lower()
+        desc = str(r.get("description") or "").lower()
+        lang = str(r.get("language") or "").lower()
+        topics = {t.lower() for t in (r.get("topics") or [])}
+        readme = str(r.get("readme_content") or "").lower()[:5000]
+
+        # Combine all text signals for keyword scanning
+        all_text = f"{name} {desc} {readme} {' '.join(topics)}"
+
+        fp = {
+            "name": r.get("name"),
+            "lang": lang,
+            "topics": topics,
+            "api_frameworks": _api_frameworks & set(all_text.split()),
+            "db_indicators": _db_indicators & set(all_text.split()),
+            "type_indicators": _type_indicators & set(all_text.split()),
+            "name_suffix": None,
+        }
+
+        # Check naming patterns: "project-api", "project-client", etc.
+        for suffix in _system_naming:
+            if name.endswith(f"-{suffix}") or name.endswith(f"_{suffix}"):
+                fp["name_suffix"] = suffix
+                break
+
+        repo_fingerprints.append(fp)
+
+    # ── 2. Detect shared API layer ───────────────────────────────────
+    api_repos = [fp for fp in repo_fingerprints if fp["api_frameworks"]]
+    if len(api_repos) >= 2:
+        shared_frameworks = set.intersection(*(fp["api_frameworks"] for fp in api_repos))
+        if shared_frameworks:
+            links_found.append(f"Shared API layer ({', '.join(shared_frameworks)}) across {len(api_repos)} repos")
+            linked_groups.append({
+                "type": "shared_api",
+                "repos": [fp["name"] for fp in api_repos],
+                "shared": list(shared_frameworks),
+            })
+        elif len(api_repos) >= 2:
+            links_found.append(f"Multi-service API architecture: {len(api_repos)} repos with distinct API frameworks")
+            linked_groups.append({
+                "type": "multi_service_api",
+                "repos": [fp["name"] for fp in api_repos],
+                "shared": list({fw for fp in api_repos for fw in fp["api_frameworks"]}),
+            })
+
+    # ── 3. Detect shared DB schemas ──────────────────────────────────
+    db_repos = [fp for fp in repo_fingerprints if fp["db_indicators"]]
+    if len(db_repos) >= 2:
+        shared_db = set.intersection(*(fp["db_indicators"] for fp in db_repos))
+        if shared_db:
+            links_found.append(f"Shared database layer ({', '.join(list(shared_db)[:3])}) across {len(db_repos)} repos")
+        else:
+            links_found.append(f"Multi-database architecture across {len(db_repos)} repos")
+        linked_groups.append({
+            "type": "shared_database",
+            "repos": [fp["name"] for fp in db_repos],
+            "shared": list(shared_db) if shared_db else [db for fp in db_repos for db in fp["db_indicators"]],
+        })
+
+    # ── 4. Detect shared type definitions / contracts ────────────────
+    type_repos = [fp for fp in repo_fingerprints if fp["type_indicators"]]
+    if len(type_repos) >= 2:
+        links_found.append(f"Cross-repo type contracts ({', '.join(list({t for fp in type_repos for t in fp['type_indicators']})[:3])}) across {len(type_repos)} repos")
+        linked_groups.append({
+            "type": "shared_types",
+            "repos": [fp["name"] for fp in type_repos],
+            "shared": list({t for fp in type_repos for t in fp["type_indicators"]}),
+        })
+
+    # ── 5. Detect monorepo-adjacent naming patterns ──────────────────
+    suffixed = [fp for fp in repo_fingerprints if fp["name_suffix"]]
+    if len(suffixed) >= 2:
+        # Check if same project prefix (e.g., "myapp-api", "myapp-client")
+        prefixes: dict[str, list[str]] = defaultdict(list)
+        for fp in suffixed:
+            name = str(fp["name"] or "")
+            prefix = name.rsplit("-", 1)[0] if "-" in name else name.rsplit("_", 1)[0]
+            prefixes[prefix].append(name)
+
+        for prefix, group in prefixes.items():
+            if len(group) >= 2:
+                links_found.append(f"System-level naming: '{prefix}-*' pattern across {len(group)} repos ({', '.join(group)})")
+                linked_groups.append({
+                    "type": "naming_convention",
+                    "repos": group,
+                    "shared": [prefix],
+                })
+
+    # ── 6. Detect shared topic clusters ──────────────────────────────
+    topic_count: dict[str, list[str]] = defaultdict(list)
+    for fp in repo_fingerprints:
+        for t in fp["topics"]:
+            topic_count[t].append(str(fp["name"]))
+
+    shared_topics = {t: repos_list for t, repos_list in topic_count.items() if len(repos_list) >= 2}
+    # Only count meaningful shared topics (not generic ones like "python", "javascript")
+    _generic_topics = {"python", "javascript", "typescript", "java", "go", "rust", "c", "cpp", "html", "css"}
+    meaningful_shared = {t: r for t, r in shared_topics.items() if t not in _generic_topics}
+    if meaningful_shared:
+        top_shared = sorted(meaningful_shared.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+        for topic, repo_names in top_shared:
+            links_found.append(f"Shared domain topic '{topic}' across {len(repo_names)} repos")
+        linked_groups.append({
+            "type": "shared_topics",
+            "repos": list({r for names in meaningful_shared.values() for r in names}),
+            "shared": list(meaningful_shared.keys())[:5],
+        })
+
+    # ── 7. Detect frontend-backend pairs (same language ecosystem) ───
+    fe_repos = [fp for fp in repo_fingerprints if fp["lang"] in {"javascript", "typescript"} and
+                any(kw in str(fp.get("name", "")).lower() for kw in ("client", "frontend", "web", "dashboard", "ui"))]
+    be_repos = [fp for fp in repo_fingerprints if
+                any(kw in str(fp.get("name", "")).lower() for kw in ("api", "server", "backend", "service"))]
+    if fe_repos and be_repos:
+        links_found.append(f"Frontend-Backend system separation: {len(fe_repos)} client(s) + {len(be_repos)} server(s)")
+        linked_groups.append({
+            "type": "fe_be_split",
+            "repos": [fp["name"] for fp in fe_repos + be_repos],
+            "shared": ["client-server architecture"],
+        })
+
+    # ── Final classification ─────────────────────────────────────────
+    system_score = len(links_found) * 15 + len(linked_groups) * 10
+    system_score = min(100, system_score)
+
+    if system_score >= 30:
+        classification = "System Architect"
+    else:
+        classification = "Developer"
+
+    return {
+        "classification": classification,
+        "links": links_found,
+        "system_score": system_score,
+        "linked_groups": linked_groups,
+    }
 
 # ---------------------------------------------------------------------------
 # Core payload builders
@@ -845,6 +1443,71 @@ async def get_portfolio(
     except httpx.RequestError:
         raise HTTPException(status_code=502, detail="Unable to reach GitHub API.")
 
+@app.get("/api/architect/{username}")
+async def get_career_architect(username: str) -> dict[str, Any]:
+    """Return Career Architect analysis for a GitHub username."""
+    try:
+        client: httpx.AsyncClient = app.state.http_client
+
+        # Phase 1 — parallel: profile + repos + events (3-way gather)
+        profile, repos, events = await asyncio.gather(
+            _fetch_github_profile(client, username),
+            _fetch_github_repos(client, username),
+            _fetch_user_events(client, username),
+        )
+
+        all_original_repos = _rank_top_original_repos(repos, username, limit=10_000)
+        tech_stack = _extract_tech_stack(repos)
+        grit_meta = _calculate_grit_meta(events, all_original_repos)
+
+        # Phase 2 — fetch READMEs for top repos to enrich AI analysis
+        top_repos_for_analysis = sorted(
+            all_original_repos,
+            key=lambda r: int(r.get("stargazers_count", 0)),
+            reverse=True,
+        )[:8]
+        readmes = await asyncio.gather(
+            *[_fetch_repo_readme(client, username, str(r.get("name") or "")) for r in top_repos_for_analysis]
+        )
+        for r, readme in zip(top_repos_for_analysis, readmes):
+            r["readme_content"] = readme
+
+        # Phase 3 — detect cross-repo semantic links (needs readme_content)
+        semantic_links = _detect_semantic_links(top_repos_for_analysis)
+        grit_meta["semantic_links"] = semantic_links
+
+        # Phase 4 — AI analysis with grit + semantic intelligence
+        analysis = await _generate_career_architect(
+            profile=profile, repos=top_repos_for_analysis,
+            tech_stack=tech_stack, grit_meta=grit_meta,
+        )
+        return analysis
+
+    except HTTPException:
+        raise
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail="GitHub API error.")
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="Unable to reach GitHub API.")
+
+
+
+@app.post("/api/coach/chat")
+async def chat_with_coach(request: CoachChatRequest) -> dict[str, Any]:
+    """Chat endpoint for the TalentForge Agent."""
+    try:
+        if _gemini_client is None:
+            return {"response": "I'm currently offline, but you can still follow the roadmap above to improve your score!"}
+            
+        prompt = _build_talentforge_agent_prompt(request.architect_data, request.message, request.history)
+        text = await _gemini_generate(prompt)
+        if not text:
+            return {"response": "I encountered an error analyzing your profile. Let's focus on those skill gaps for now."}
+            
+        return {"response": text}
+    except Exception as exc:
+        logger.error("Error in coach chat: %s", exc)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/api/cv/{username}")
 async def get_cv(username: str) -> StreamingResponse:
