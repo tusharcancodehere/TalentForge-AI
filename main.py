@@ -1,34 +1,30 @@
 import sys
 import os
 
-
 # 1. Absolute Path Injection
-root_path = os.path.dirname(os.path.abspath(__file__))
-if root_path not in sys.path:
-    sys.path.insert(0, root_path)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-
-# 2. Render Environment Diagnostics
-print("--- STARTING RENDER DEPLOYMENT DIAGNOSTIC ---")
-print(f"Current Working Directory: {os.getcwd()}")
-print(f"Python Search Path: {sys.path}")
+# 2. Render Hardware/FS Audit (Visible in Logs)
+print("\n--- RENDER SYSTEM AUDIT ---")
+print(f"CWD: {os.getcwd()}")
+print(f"Sys Path: {sys.path}")
 try:
-    print(f"Root Directory Contents: {os.listdir(root_path)}")
-    backend_dir = os.path.join(root_path, "backend")
-    if os.path.exists(backend_dir):
-        print(f"Backend Folder Found. Contents: {os.listdir(backend_dir)}")
+    items = os.listdir(BASE_DIR)
+    print(f"Root Contents: {items}")
+    if "backend" in items:
+        print(f"Backend Found. Contents: {os.listdir(os.path.join(BASE_DIR, 'backend'))}")
     else:
-        print("!! CRITICAL: 'backend' folder not found in root !!")
+        print("!! ERROR: 'backend' FOLDER NOT FOUND IN ROOT !!")
 except Exception as e:
-    print(f"Diagnostic Error: {e}")
-print("---------------------------------------------")
-
+    print(f"Diagnostic Crash: {e}")
+print("---------------------------\n")
 
 # 3. Secure Import
 try:
     from backend.main import app
-
-    print("V3 Protocol: Backend Linkage Successful.")
+    print("V3 Protocol: Linkage Successful.")
 except ImportError as e:
-    print(f"V3 Protocol: Linkage Failed. Detail: {e}")
+    print(f"V3 Protocol: Linkage Failed. Error: {e}")
     raise e
