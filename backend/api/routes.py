@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.core.github_engine import (
-    get_http_client,
     get_portfolio_payload,
     get_cv_payload,
 )
@@ -51,11 +50,12 @@ async def track_and_rate_limit(request: Request) -> None:
 @router.get("/portfolio/{username}")
 async def get_portfolio(
     username: str,
+    request: Request,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=6, ge=1, le=12),
     _: None = Depends(track_and_rate_limit),
 ) -> dict[str, Any]:
-    http_client = get_http_client()
+    http_client = request.app.state.http_client  # type: ignore[union-attr]
     try:
         return await get_portfolio_payload(http_client=http_client, username=username, page=page, page_size=page_size)
     except HTTPException:
@@ -67,9 +67,10 @@ async def get_portfolio(
 @router.get("/architect/{username}")
 async def get_career_architect(
     username: str,
+    request: Request,
     _: None = Depends(track_and_rate_limit),
 ) -> dict[str, Any]:
-    http_client = get_http_client()
+    http_client = request.app.state.http_client  # type: ignore[union-attr]
     try:
         base_payload = await build_career_architect_payload(http_client=http_client, username=username)
         analysis = await generate_career_architect(
@@ -106,7 +107,7 @@ class CoachChatRequest(BaseModel):
 
 
 @router.post("/coach/chat")
-async def chat_with_coach(request: CoachChatRequest, _: None = Depends(track_and_rate_limit)) -> dict[str, Any]:
+async def chat_with_coach(request: CoachChatRequest, http_request: Request, _: None = Depends(track_and_rate_limit)) -> dict[str, Any]:
     response_text = await chat_with_coach_agent(request.architect_data, request.message, request.history)
     return {"response": response_text}
 
@@ -118,7 +119,7 @@ class PDFExportRequest(BaseModel):
 
 
 @router.post("/cv/export")
-async def export_cv(req: PDFExportRequest, _: None = Depends(track_and_rate_limit)) -> StreamingResponse:
+async def export_cv(req: PDFExportRequest, request: Request, _: None = Depends(track_and_rate_limit)) -> StreamingResponse:
     import re
     import html
     import io
@@ -138,10 +139,10 @@ async def export_cv(req: PDFExportRequest, _: None = Depends(track_and_rate_limi
 
 
 @router.get("/cv/{username}")
-async def get_cv(username: str, _: None = Depends(track_and_rate_limit)) -> StreamingResponse:
+async def get_cv(username: str, request: Request, _: None = Depends(track_and_rate_limit)) -> StreamingResponse:
     import io
 
-    http_client = get_http_client()
+    http_client = request.app.state.http_client  # type: ignore[union-attr]
     payload = await get_cv_payload(http_client=http_client, username=username)
     pdf_bytes = build_resume_pdf(portfolio=payload, username=username)
     return StreamingResponse(

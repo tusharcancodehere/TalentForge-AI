@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import os
 from contextlib import asynccontextmanager
 from typing import Any
@@ -14,11 +16,10 @@ TOP_CV_PROJECTS: int = 8
 MAX_PORTFOLIO_PAGE_SIZE: int = 12
 
 
-async def _check_github_rate_limit(response: httpx.Response) -> None:
+def _check_github_rate_limit(response: httpx.Response) -> None:
     remaining = response.headers.get("X-RateLimit-Remaining")
     if remaining is not None and int(remaining) < 5:
-        # Logging kept minimal here; callers can attach loggers if needed.
-        pass
+        return
 
 
 @asynccontextmanager
@@ -33,16 +34,9 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     await app.state.http_client.aclose()
 
 
-def get_http_client() -> httpx.AsyncClient:
-    # This assumes FastAPI app has attached the client on state in lifespan.
-    from backend.main import app  # type: ignore
-
-    return app.state.http_client
-
-
 async def fetch_github_profile(client: httpx.AsyncClient, username: str) -> dict[str, Any]:
     response = await client.get(f"{GITHUB_API_BASE}/users/{username}")
-    await _check_github_rate_limit(response)
+    _check_github_rate_limit(response)
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="GitHub user not found.")
     if response.status_code == 403:
@@ -56,7 +50,7 @@ async def fetch_github_repos(client: httpx.AsyncClient, username: str) -> list[d
         f"{GITHUB_API_BASE}/users/{username}/repos",
         params={"sort": "stargazers", "per_page": 50},
     )
-    await _check_github_rate_limit(response)
+    _check_github_rate_limit(response)
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail="GitHub user not found.")
     if response.status_code == 403:
@@ -71,8 +65,6 @@ async def fetch_repo_readme(client: httpx.AsyncClient, username: str, repo_name:
         if response.status_code != 200:
             return None
         content_b64: str = response.json().get("content", "")
-        import base64
-
         return base64.b64decode(content_b64).decode("utf-8", errors="ignore")
     except Exception:
         return None
@@ -124,7 +116,7 @@ async def get_portfolio_payload(
     all_original_repos = rank_top_original_repos(repos, username, limit=10_000)
     total_projects = len(all_original_repos)
     start_idx = (page - 1) * page_size
-    paginated_repos = all_original_repos[start_idx : start_idx + page_size]
+    paginated_repos = all_original_repos[start_idx: start_idx + page_size]
     tech_stack = extract_tech_stack(repos)
 
     projects, market_insights = await asyncio.gather(
@@ -152,9 +144,6 @@ async def get_portfolio_payload(
             "total_pages": total_pages,
         },
     }
-
-
-import asyncio
 
 
 async def get_cv_payload(http_client: httpx.AsyncClient, username: str) -> dict[str, Any]:
@@ -190,67 +179,3 @@ async def get_cv_payload(http_client: httpx.AsyncClient, username: str) -> dict[
         "tech_stack": tech_stack,
         "professional_summary": professional_summary,
     }
-
-import os
-import base64
-import logging
-import httpx
-from typing import Any
-from fastapi import HTTPException
-
-GITHUB_API_BASE: str = "https://api.github.com"
-GITHUB_TIMEOUT_SECONDS: float = 10.0
-TOP_PORTFOLIO_PROJECTS: int = 6
-TOP_CV_PROJECTS: int = 8
-
-logger = logging.getLogger("talentforge.github")
-
-def _check_github_rate_limit(response: httpx.Response) -> None:
-    remaining = response.headers.get("X-RateLimit-Remaining")
-    if remaining is not None and int(remaining) < 5:
-        reset_ts = response.headers.get("X-RateLimit-Reset", "unknown")
-        logger.warning(f"GitHub rate limit almost exhausted! {remaining} remaining; resets at {reset_ts}.")
-
-async def fetch_github_profile(client: httpx.AsyncClient, username: str) -> dict[str, Any]:
-    response = await client.get(f"{GITHUB_API_BASE}/users/{username}")
-    _check_github_rate_limit(response)
-    if response.status_code == 404:
-        raise HTTPException(status_code=404, detail="GitHub user not found.")
-    if response.status_code == 403:
-        raise HTTPException(status_code=429, detail="GitHub API rate limit exceeded.")
-    response.raise_for_status()
-    return response.json()
-
-async def fetch_github_repos(client: httpx.AsyncClient, username: str) -> list[dict[str, Any]]:
-    response = await client.get(f"{GITHUB_API_BASE}/users/{username}/repos", params={"sort": "stargazers", "per_page": 50})
-    _check_github_rate_limit(response)
-    if response.status_code == 404:
-        raise HTTPException(status_code=404, detail="GitHub user not found.")
-    if response.status_code == 403:
-        raise HTTPException(status_code=429, detail="GitHub API rate limit exceeded.")
-    response.raise_for_status()
-    return response.json()
-
-async def fetch_repo_readme(client: httpx.AsyncClient, username: str, repo_name: str) -> str | None:
-    try:
-        response = await client.get(f"{GITHUB_API_BASE}/repos/{username}/{repo_name}/readme")
-        if response.status_code != 200:
-            return None
-        content_b64: str = response.json().get("content", "")
-        return base64.b64decode(content_b64).decode("utf-8", errors="ignore")
-    except Exception:
-        return None
-
-async def fetch_user_events(client: httpx.AsyncClient, username: str) -> list[dict[str, Any]]:
-    try:
-        response = await client.get(f"{GITHUB_API_BASE}/users/{username}/events/public", params={"per_page": 100})
-        return response.json() if response.status_code == 200 else []
-    except Exception:
-        return []
-
-def extract_tech_stack(repos: list[dict[str, Any]]) -> list[str]:
-    return sorted({repo["language"] for repo in repos if isinstance(repo.get("language"), str) and repo.get("language")})
-
-def rank_top_original_repos(repos: list[dict[str, Any]], username: str, limit: int = TOP_PORTFOLIO_PROJECTS) -> list[dict[str, Any]]:
-    filtered = [r for r in repos if not r.get("fork") and str(r.get("name", "")).lower() != username.lower()]
-    return sorted(filtered, key=lambda r: int(r.get("stargazers_count", 0)), reverse=True)[:limit]
