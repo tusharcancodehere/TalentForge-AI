@@ -19,8 +19,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend
+# Copy backend application code
 COPY main.py .
+COPY run.py .
+COPY backend ./backend
 
 # Copy built frontend from Stage 1
 COPY --from=frontend /app/dist ./dist
@@ -28,5 +30,5 @@ COPY --from=frontend /app/dist ./dist
 # Expose the port Zeabur expects
 EXPOSE 8080
 
-# Start FastAPI server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Start FastAPI server via bootstrap script
+CMD ["python", "run.py"]
