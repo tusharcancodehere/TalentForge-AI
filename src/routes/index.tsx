@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { LandingPage } from "@/components/portfolio/LandingPage";
-import { Dashboard } from "@/components/portfolio/Dashboard";
+import { CareerArchitectPanel } from "@/components/portfolio/CareerArchitectPanel";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/BrandLogo";
 import { analyzeProfile } from "@/lib/api";
@@ -71,10 +71,10 @@ function Index() {
       <main>
         <AnimatePresence mode="wait">
           {data ? (
-            <div key="dashboard" className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
-              <Dashboard
+            <div key="architect" className="px-5 sm:px-10 pb-24 pt-8 sm:pt-16 flex items-start justify-center">
+              <CareerArchitectPanel
                 data={data}
-                onBack={() => {
+                onClose={() => {
                   setData(null);
                   setError(null);
                 }}
